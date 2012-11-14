@@ -1,7 +1,41 @@
-import copy, random, logging, sys
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+"""
 
-# constants
+.,:,:::~::::...................,,...................................................................
+.ID=.......8MM,...............,M.:..................................................................
+.+M?.......M,M,.N,............M..M...........,......................................................
+.,MM.........M,M,,MN,.MMMO...:M..7..........M,M7........:......,MMMN..DM............................
+.~M.........D$M.~....MM...M..M.=.Z..,,~8N~..M..M....$MM.MM.....M........M....... ............MMM....
+.,~8:~ZMM..,MM:......$M,,.M..M...M.MD.....M:M..MMMN..DMNM......M........?N.ZZM, .=MM,...8MMO.~NM....
+,.....,M,..MM8:...M~.MM8..I.I8I..MM........MM..MM...~MM.......~8...MMM8..M.M.,D.M,...MMN...,,M,.....
+......M+.7M:MM...M.D..MM...7M.~:.M.M.:M~...MM.,MM.M~..,.... ..Z+..MZ..O=.M.M.,NM....:O8M..M8.... ...
+.....OD.M=.N:M.,,MMM.,MM...MM..8.M,M......8+8.:NM.MMZ...M.....N:..M....M.M.M.+M...MM?ND.8,MMM$MM....
+....I,.M...M7M..M,,M.:MM...M8?MM.M,M.I....N=,.O+M....DM.......O=..=...$=.,D8.8M..M......?.,..M?... .
+..,8M.M,...M.M,.M,N,.IMM...,..MM.M,M..?ZM..M..MM..NMMMMN.=MM..Z?... ..M.~,D~.MM.,NMM.MMM..MMMM~.~MN.
+.,M~..$MM:.~NMN..MM..MMD..$.+,MM.Z?M..MM..,M..M,M.D....MN.MM..=D.,..NM..:MM..MM,..~$M..M.,8...MN.M$.
+.D=......:M~MIM......MM8.?M..M,M..MM.DM..ZM~..M8M......MM~.....M.,M7....,MM..MM..8MM=.MM......NM:...
++M....:....M:?M.....I8M=.MM.DM.M..MM.D.,M..~..MMN8M.MM=........M........M.M..MM.M..7M+.M..M?M7......
+M?.,.......O..,M...MM.N:?MD.M,.M..MM..M,...,..M.M:$............M.......M..M..N.MM8D~. ..MM.... .....
+.8M...MNM.M.....MM+...?$MM.M:...MZ?.MI......?M,...............7?...,MMM,..II,:  ....................
+..~MM?..,MZ,...........MM.......MM..........MM.................M.DM........M?.......................
+.......................+M.......................................MM..................................
+
+Zombie Dice is by Steve Jackson Games
+http://zombiedice.sjgames.com/
+
+
+Zombie Dice simulator
+
+
+Note: A "turn" is a single player's turn. A "round" is every player having one turn.
+
+Note: Since all variables are public in Python, it is trivial to have a bot that hacks the tournament code. Inspect the bot code before running it.
+"""
+
+
+import copy, random, logging, sys
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# constants, to keep a typo in a string from making weird errors
 COLOR = 'color'
 ICON = 'icon'
 RED = 'red'
@@ -16,12 +50,15 @@ SCORES = 'scores'
 def runGame(zombies):
     global currentZombie, currentCup, currentHand, numShotgunsRolled, numBrainsRolled, rolledBrains
 
-    # game state set up
+    # create a new game state object
     playerScores = dict([(zombie.name, 0) for zombie in zombies])
     playerOrder = [zombie.name for zombie in zombies]
     logging.debug('Player order: ' + ', '.join(playerOrder))
+    gameState = {'order': playerOrder,
+                 'scores': playerScores,
+                 'round': 0}
 
-    # validate zombie objects
+    # validate zombie objects, return None to signify an aborted game
     if len(playerOrder) != len(set(playerOrder)): # set() will get rid of any duplicates
         logging.error('Zombies must have unique names.')
         return
@@ -34,20 +71,14 @@ def runGame(zombies):
         if 'name' not in dir(zombie):
             logging.error('All zombies need a name member.')
 
-    # create a new game state object
-    gameState = {'order': playerOrder,
-                 'scores': playerScores,
-                 'round': 0}
-
-    # call every zombie's newGame() method
+    # call every zombie's newGame() method, if it has one
     for zombie in zombies:
         if 'newGame' in dir(zombie):
             zombie.newGame()
 
     # set up for a new game
-    lastRound = False
-    tieBreakingRound = False
-    highestScore = 0 # used for tie breaking round
+    lastRound = False # True when a player has reached 13 brains
+    tieBreakingRound = False # True when the "last round" ended in a tie
     zombiesInPlay = copy.copy(zombies) # all zombies play
     while True: # game loop
         gameState['round'] += 1
@@ -62,49 +93,49 @@ def runGame(zombies):
             currentHand = []
             numShotgunsRolled = 0
             numBrainsRolled = 0
-            rolledBrains = []
+            rolledBrains = [] # list of dice colors, in case of "ran out of dice"
 
             # run the turn (don't pass the original gameState)
             zombie.turn(copy.deepcopy(gameState))
 
-            # count the scores
+            # add brains to the score
             if numShotgunsRolled < 3:
                 gameState[SCORES][zombie.name] += numBrainsRolled
 
             if gameState[SCORES][zombie.name] >= 13:
+                # once a player reaches 13 brains, it becomes the last round
                 lastRound = True
                 logging.debug('LAST ROUND')
 
         if tieBreakingRound:
-            break
+            break # there is only one tie-breaking round, so after it end the game
 
         if lastRound:
-            # only zombies tied with the highest score play in the tie breaking round (if there is one)
+            # only zombies tied with the highest score go on to the tie-breaking round (if there is one)
             zombiesInPlay = []
-            highestScore = 0
-            for zombieScore in gameState[SCORES].values(): # get highest score
-                if zombieScore > highestScore:
-                    highestScore = zombieScore
-            for zombie in zombies:
-                if gameState[SCORES][zombie.name] == highestScore:
-                    zombiesInPlay.append(zombie)
+            highestScore = max(gameState[SCORES].values()) # used for tie breaking round
+            # zombiesInPlay will now only have the zombies tied with the highest score:
+            zombiesInPlay = [zombie for zombie in zombies if gameState[SCORES][zombie.name] == highestScore]
 
-            # break out of the game loop if there is no tie
             if len(zombiesInPlay) == 1:
+                # only one winner, so end the game
                 break
             else:
+                # multiple winners, so go on to the tie-breaking round.
                 logging.debug('TIE BREAKING ROUND')
                 tieBreakingRound = True
 
-    # call every zombie's endGame() method
+    # call every zombie's endGame() method, if it has one
     for zombie in zombies:
         if 'endGame' in dir(zombie):
             zombie.endGame(copy.deepcopy(gameState))
 
+    # rank bots by score
     ranking = sorted(gameState[SCORES].items(), key=lambda x: x[1], reverse=True)
     highestScore = ranking[0][1]
     logging.debug('Ranking: %s' % (ranking))
 
+    # winners are the bot(s) with the highest score
     winners = [x[0] for x in ranking if x[1] == highestScore]
     logging.debug('Winner(s): %s' % (winners))
 
@@ -131,6 +162,7 @@ def runTournament(zombies, numGames):
                 if score[1] == highestScore:
                     tournamentState['ties'][score[0]] += 1
 
+    # print out the tournament results in neatly-formatted columns.
     print('Tournament results:')
     maxNameLength = max([len(zombie.name) for zombie in zombies])
 
@@ -139,13 +171,14 @@ def runTournament(zombies, numGames):
     for winnerName, winnerScore in winsRanking:
         print('    %s %s' % (winnerName.rjust(maxNameLength), str(winnerScore).rjust(len(str(numGames)))))
 
-    #tiesRanking = sorted(tournamentState['ties'].items(), key=lambda x: x[1], reverse=True)
-    #print('Ties:')
-    #for tiedName, tiedScore in tiesRanking:
-    #    print('    %s %s' % (tiedName.rjust(maxNameLength), str(tiedScore).rjust(len(str(numGames)))))
+    tiesRanking = sorted(tournamentState['ties'].items(), key=lambda x: x[1], reverse=True)
+    print('Ties:')
+    for tiedName, tiedScore in tiesRanking:
+        print('    %s %s' % (tiedName.rjust(maxNameLength), str(tiedScore).rjust(len(str(numGames)))))
 
 def runOneOnOne(zombies, numGames):
-    pass
+    # have each zombie play every other zombie in a one-on-one match
+    pass # TODO
 
 def roll():
     global currentZombie, currentCup, currentHand, numShotgunsRolled, numBrainsRolled, rolledBrains
@@ -156,9 +189,9 @@ def roll():
 
     logging.debug(currentZombie + ' rolls. (brains: %s, shotguns: %s)' % (numBrainsRolled, numShotgunsRolled))
 
-    # if we've run out of dice, put the rolled brain back into the cup
+    # "ran out of dice", so put the rolled brains back into the cup
     if 3 - len(currentHand) > len(currentCup):
-        logging.debug('Out of dice! Putting brains back into cup.')
+        logging.debug('Out of dice! Putting rolled brains back into cup.')
         currentCup.extend(rolledBrains)
         rolledBrains = []
 
@@ -222,14 +255,14 @@ def rollDie(die):
 
 
 
-# ==== GENERIC ZOMBIE BOTS =========================
+# ==== SIMPLE ZOMBIE BOTS =========================
 class Zombie_MinNumBrainsThenStops(object):
     def __init__(self, name, minBrains):
         self.name = name
         self.minBrains = minBrains
 
     def turn(self, gameState):
-        brains = 0
+        brains = 0 # number of brains rolled this turn
         while brains < self.minBrains:
             results = roll()
             if results == []:
@@ -244,7 +277,7 @@ class Zombie_MinNumShotgunsThenStops(object):
         self.minShotguns = minShotguns
 
     def turn(self, gameState):
-        shotguns = 0
+        shotguns = 0 # number of shotguns rolled this turn
         while shotguns < self.minShotguns:
             results = roll()
             if results == []:
@@ -261,8 +294,8 @@ class Zombie_MinNumBrainsShotgunsThenStops(object):
         self.minShotguns = minShotguns
 
     def turn(self, gameState):
-        shotguns = 0
-        brains = 0
+        shotguns = 0 # number of shotguns rolled this turn
+        brains = 0 # number of brains rolled this turn
         while shotguns < self.minShotguns and brains < self.minBrains:
             results = roll()
             if results == []:
@@ -274,34 +307,42 @@ class Zombie_MinNumBrainsShotgunsThenStops(object):
                     brains += 1
 
 class Zombie_RollsUntilInTheLead(object):
+    """This bot's strategy is to keep rolling for brains until they are in the lead (plus an optional number of points). This is a high risk strategy, because if the opponent gets an early lead then this bot will take greater and greater risks to get in the lead in a single turn.
+
+    However, once in the lead, this bot will just use Zombie_MinNumShotgunsThenStops's strategy."""
     def __init__(self, name, plusLead=0):
         self.name = name
         self.plusLead = plusLead
+        self.altZombieStrategy = Zombie_MinNumShotgunsThenStops(name + '_alt', 2)
 
     def turn(self, gameState):
-        results = roll() # roll at least once
-        brains = len([True for result in results if result[ICON] == BRAINS])
-        myScore = gameState[SCORES][currentZombie]
+        highestScoreThatIsntMine = max([zombieScore for zombieName, zombieScore in gameState[SCORES].items() if zombieName != currentZombie])
 
-        highestScoreThatIsntMine = 0
-        for zombieName, zombieScore in gameState[SCORES].items():
-            if zombieName != currentZombie and zombieScore > highestScoreThatIsntMine:
-                highestScoreThatIsntMine = zombieScore
+        if highestScoreThatIsntMine + self.plusLead >= gameState[SCORES][currentZombie]:
+            results = roll() # roll at least once
+            brains = len([True for result in results if result[ICON] == BRAINS])
+            myScore = gameState[SCORES][currentZombie]
 
-        while results != [] and myScore + brains <= highestScoreThatIsntMine + self.plusLead:
-            results = roll()
-            brains += len([True for result in results if result[ICON] == BRAINS])
+            while results != [] and myScore + brains <= highestScoreThatIsntMine + self.plusLead:
+                results = roll()
+                brains += len([True for result in results if result[ICON] == BRAINS])
+        else:
+            # already in the lead, so just use altZombieStrategy's turn()
+            self.altZombieStrategy.turn(gameState)
 
 
 class Zombie_MinGreenBrainsThenStops(object):
+    """This bot will keep rolling until it has BOTH a minimum number of brains and a minimum number of green brains. The idea being that if the bot has rolled several non-green brains, there are still green brains out there that give it good odds to roll in the future.
+
+    This bot ignores how many shotguns it has rolled."""
     def __init__(self, name, minGreenBrains, minAllBrains):
         self.name = name
         self.minGreenBrains = minGreenBrains
         self.minAllBrains = minAllBrains
 
     def turn(self, gameState):
-        greenBrains = 0
-        allBrains = 0
+        greenBrains = 0 # number of GREEN brains rolled this turn
+        allBrains = 0 # number of brains rolled this turn
         while greenBrains < self.minGreenBrains or allBrains < self.minAllBrains:
             results = roll()
             if results == []:
@@ -314,22 +355,24 @@ class Zombie_MinGreenBrainsThenStops(object):
 
 
 class Zombie_RandomCoinFlip(object):
+    """After the first roll, this bot always has a fifty-fifty chance of deciding to roll again or stopping."""
     def __init__(self, name):
         self.name = name
 
     def turn(self, gameState):
-        roll() # first roll
+        results = roll() # first roll
 
-        while random.randint(0, 1) == 0:
-            roll()
+        while random.randint(0, 1) == 0 and results != []:
+            results = roll()
 
 class Zombie_HumanPlayer(object):
+    """This "bot" actually calls input() and print() to let a human player play Zombie Dice against the other bots."""
     def __init__(self, name):
         self.name = name
 
     def turn(self, gameState):
-        brains = ''
-        shotguns = ''
+        brains = '' # number of brains rolled this turn
+        shotguns = '' # number of shotguns rolled this turn
         print('Scores:')
         for zombieName, zombieScore in gameState[SCORES].items():
             print('\t%s - %s' % (zombieScore, zombieName))
@@ -355,25 +398,30 @@ class Zombie_HumanPlayer(object):
                 input()
                 return
 
-# ==== RUN TOURNAMENT ======================
-zombies = []
-#zombies.append(Zombie_MinNumBrainsThenStops('Min2brains', 2))
-#zombies.append(Zombie_MinNumBrainsThenStops('Min3brains', 3))
-#zombies.append(Zombie_MinNumShotgunsThenStops('Min1shotguns', 1))
-zombies.append(Zombie_MinNumShotgunsThenStops('Min2shotguns', 2))
-#zombies.append(Zombie_MinGreenBrainsThenStops('Min3brains1green', 1, 3))
-#zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min3b2s', 3, 2))
-#zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min4b2s', 4, 2))
-#zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min5b2s', 5, 2))
-#zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min6b2s', 6, 2))
-#zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min7b2s', 7, 2))
-#zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min8b2s', 8, 2))
-zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min9b2s', 9, 2))
-#zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min10b2s', 10, 2))
-#zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min11b2s', 11, 2))
-#zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min99b2s', 99, 2))
-#zombies.append(Zombie_RollsUntilInTheLead('RollsUntilLead'))
-#zombies.append(Zombie_RollsUntilInTheLead('RollsUntilLead+1', 1))
-#zombies.append(Zombie_RandomCoinFlip('RandomCoinFlip'))
-#zombies.append(Zombie_HumanPlayer('Al'))
-runTournament(zombies, 1000)
+# ==== RUN TOURNAMENT CODE ======================
+def main():
+    zombies = []
+    #zombies.append(Zombie_MinNumBrainsThenStops('Min2brains', 2))
+    #zombies.append(Zombie_MinNumBrainsThenStops('Min3brains', 3))
+    #zombies.append(Zombie_MinNumShotgunsThenStops('Min1shotguns', 1))
+    zombies.append(Zombie_MinNumShotgunsThenStops('Min2shotguns', 2))
+    #zombies.append(Zombie_MinGreenBrainsThenStops('Min3brains1green', 1, 3))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min3b2s', 3, 2))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min4b2s', 4, 2))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min5b2s', 5, 2))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min6b2s', 6, 2))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min7b2s', 7, 2))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min8b2s', 8, 2))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min9b2s', 9, 2))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min10b2s', 10, 2))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min11b2s', 11, 2))
+    #zombies.append(Zombie_MinNumBrainsShotgunsThenStops('Min99b2s', 99, 2))
+    zombies.append(Zombie_RollsUntilInTheLead('RollsUntilLead'))
+    #zombies.append(Zombie_RollsUntilInTheLead('RollsUntilLead+1', 1))
+    zombies.append(Zombie_RandomCoinFlip('RandomCoinFlip'))
+    #zombies.append(Zombie_HumanPlayer('Al'))
+
+    runTournament(zombies, 1000)
+
+if __name__ == '__main__':
+    main()
