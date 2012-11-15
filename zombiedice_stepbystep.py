@@ -15,6 +15,16 @@ import logging, random
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.debug('Start of the program.')
 
+# constants, to keep a typo in a string from making weird errors
+COLOR = 'color'
+ICON = 'icon'
+RED = 'red'
+GREEN = 'green'
+YELLOW = 'yellow'
+SHOTGUN = 'shotgun'
+BRAINS = 'brains'
+FOOTSTEPS = 'footsteps'
+
 VERBOSE = False # if True, program outputs the actions that happen during the game
 
 
@@ -33,27 +43,27 @@ def roll():
     """This global function is called by a zombie bot object to indicate that they wish to roll the dice.
     The state of the game and previous rolls are held in global variables."""
     roll = random.randint(1, 6)
-    if die == 'red':
+    if die == RED:
         if roll in (1, 2, 3):
-            return {'color': 'red', 'icon': 'shotgun'}
+            return {COLOR: RED, ICON: SHOTGUN}
         elif roll in (4, 5):
-            return {'color': 'red', 'icon': 'footsteps'}
+            return {COLOR: RED, ICON: FOOTSTEPS}
         elif roll in (6,):
-            return {'color': 'red', 'icon': 'brains'}
-    elif die == 'yellow':
+            return {COLOR: RED, ICON: BRAINS}
+    elif die == YELLOW:
         if roll in (1, 2):
-            return {'color': 'yellow', 'icon': 'shotgun'}
+            return {COLOR: YELLOW, ICON: SHOTGUN}
         elif roll in (3, 4):
-            return {'color': 'yellow', 'icon': 'footsteps'}
+            return {COLOR: YELLOW, ICON: FOOTSTEPS}
         elif roll in (5, 6):
-            return {'color': 'yellow', 'icon': 'brains'}
-    elif die == 'green':
+            return {COLOR: YELLOW, ICON: BRAINS}
+    elif die == GREEN:
         if roll in (1,):
-            return {'color': 'green', 'icon': 'shotgun'}
+            return {COLOR: GREEN, ICON: SHOTGUN}
         elif roll in (2, 3):
-            return {'color': 'green', 'icon': 'footsteps'}
+            return {COLOR: GREEN, ICON: FOOTSTEPS}
         elif roll in (4, 5, 6):
-            return {'color': 'green', 'icon': 'brains'}
+            return {COLOR: GREEN, ICON: BRAINS}
 
 
 def rollDie(die):
