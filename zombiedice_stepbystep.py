@@ -36,6 +36,8 @@ def runGame(zombies):
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
     zombies is a list of zombie bot objects. numGames is an int of how many games to run."""
+    tournamentState = {'wins': dict([(zombie.name, 0) for zombie in zombies]),
+                       'ties': dict([(zombie.name, 0) for zombie in zombies])}
 
     for i in range(numGames):
         random.shuffle(zombies) # randomize the order
@@ -43,6 +45,16 @@ def runTournament(zombies, numGames):
 
         if endState is None:
             sys.exit('Error when running game.')
+
+        ranking = sorted(endState[SCORES].items(), key=lambda x: x[1], reverse=True)
+        highestScore = ranking[0][1]
+        winners = [x[0] for x in ranking if x[1] == highestScore]
+        if len(winners) == 1:
+            tournamentState['wins'][ranking[0][0]] += 1
+        elif len(winners) > 1:
+            for score in endState[SCORES].items():
+                if score[1] == highestScore:
+                    tournamentState['ties'][score[0]] += 1
 
 
 def roll():
