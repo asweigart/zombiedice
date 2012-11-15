@@ -11,7 +11,7 @@ Note: Since all variables are public in Python, it is trivial to have a bot that
 Note: We don't use OOP for bots. A "zombie dice bot" simply implements a turn() method which calls a global roll() function as often as it likes. See documentation for details.
 """
 
-import logging, random
+import logging, random, sys
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.debug('Start of the program.')
 
@@ -36,7 +36,13 @@ def runGame(zombies):
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
     zombies is a list of zombie bot objects. numGames is an int of how many games to run."""
-    pass
+
+    for i in range(numGames):
+        random.shuffle(zombies) # randomize the order
+        endState = runGame(zombies) # use the same zombie objects so they can remember previous games.
+
+        if endState is None:
+            sys.exit('Error when running game.')
 
 
 def roll():
