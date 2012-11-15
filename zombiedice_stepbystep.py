@@ -11,7 +11,7 @@ Note: Since all variables are public in Python, it is trivial to have a bot that
 Note: We don't use OOP for bots. A "zombie dice bot" simply implements a turn() method which calls a global roll() function as often as it likes. See documentation for details.
 """
 
-import logging
+import logging, random
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.debug('Start of the program.')
 
@@ -32,7 +32,28 @@ def runTournament(zombies, numGames):
 def roll():
     """This global function is called by a zombie bot object to indicate that they wish to roll the dice.
     The state of the game and previous rolls are held in global variables."""
-    pass
+    roll = random.randint(1, 6)
+    if die == 'red':
+        if roll in (1, 2, 3):
+            return {'color': 'red', 'icon': 'shotgun'}
+        elif roll in (4, 5):
+            return {'color': 'red', 'icon': 'footsteps'}
+        elif roll in (6,):
+            return {'color': 'red', 'icon': 'brains'}
+    elif die == 'yellow':
+        if roll in (1, 2):
+            return {'color': 'yellow', 'icon': 'shotgun'}
+        elif roll in (3, 4):
+            return {'color': 'yellow', 'icon': 'footsteps'}
+        elif roll in (5, 6):
+            return {'color': 'yellow', 'icon': 'brains'}
+    elif die == 'green':
+        if roll in (1,):
+            return {'color': 'green', 'icon': 'shotgun'}
+        elif roll in (2, 3):
+            return {'color': 'green', 'icon': 'footsteps'}
+        elif roll in (4, 5, 6):
+            return {'color': 'green', 'icon': 'brains'}
 
 
 def rollDie(die):
