@@ -56,6 +56,20 @@ def runTournament(zombies, numGames):
                 if score[1] == highestScore:
                     tournamentState['ties'][score[0]] += 1
 
+    # print out the tournament results in neatly-formatted columns.
+    print('Tournament results:')
+    maxNameLength = max([len(zombie.name) for zombie in zombies])
+
+    winsRanking = sorted(tournamentState['wins'].items(), key=lambda x: x[1], reverse=True)
+    print('Wins:')
+    for winnerName, winnerScore in winsRanking:
+        print('    %s %s' % (winnerName.rjust(maxNameLength), str(winnerScore).rjust(len(str(numGames)))))
+
+    tiesRanking = sorted(tournamentState['ties'].items(), key=lambda x: x[1], reverse=True)
+    print('Ties:')
+    for tiedName, tiedScore in tiesRanking:
+        print('    %s %s' % (tiedName.rjust(maxNameLength), str(tiedScore).rjust(len(str(numGames)))))
+
 
 def roll():
     """This global function is called by a zombie bot object to indicate that they wish to roll the dice.
