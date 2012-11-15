@@ -74,6 +74,14 @@ def runTournament(zombies, numGames):
 def roll():
     """This global function is called by a zombie bot object to indicate that they wish to roll the dice.
     The state of the game and previous rolls are held in global variables."""
+    pass
+
+
+def rollDie(die):
+    """Returns the result of a single die roll as a dictionary with keys 'color' and 'icon'.
+    The die parameter is a string of the color of the die (i.e. 'green', 'yellow', 'red').
+    The 'color' values in the return dict are one of 'green', 'yellow', 'red'.
+    The 'icon' values are one of 'shotgun', 'footsteps', 'brains'."""
     roll = random.randint(1, 6)
     if die == RED:
         if roll in (1, 2, 3):
@@ -96,14 +104,6 @@ def roll():
             return {COLOR: GREEN, ICON: FOOTSTEPS}
         elif roll in (4, 5, 6):
             return {COLOR: GREEN, ICON: BRAINS}
-
-
-def rollDie(die):
-    """Returns the result of a single die roll as a dictionary with keys 'color' and 'icon'.
-    The die parameter is a string of the color of the die (i.e. 'green', 'yellow', 'red').
-    The 'color' values in the return dict are one of 'green', 'yellow', 'red'.
-    The 'icon' values are one of 'shotgun', 'footsteps', 'brains'."""
-    pass
 
 
 
