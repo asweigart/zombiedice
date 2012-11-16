@@ -65,6 +65,8 @@ def runGame(zombies):
             zombie.newGame()
 
     # set up for a new game
+    lastRound = False # True when a player has reached 13 brains
+    tieBreakingRound = False # True when the "last round" ended in a tie
     zombiesInPlay = copy.copy(zombies) # all zombies play
     while True: # game loop
         gameState['round'] += 1
@@ -97,6 +99,25 @@ def runGame(zombies):
                 lastRound = True
                 logging.debug('LAST ROUND')
                 if VERBOSE: print('%s has reached 13 brains.' % (zombie.name))
+
+        if tieBreakingRound:
+            break # there is only one tie-breaking round, so after it end the game
+
+        if lastRound:
+            # only zombies tied with the highest score go on to the tie-breaking round (if there is one)
+            zombiesInPlay = []
+            highestScore = max(gameState[SCORES].values()) # used for tie breaking round
+            # zombiesInPlay will now only have the zombies tied with the highest score:
+            zombiesInPlay = [zombie for zombie in zombies if gameState[SCORES][zombie.name] == highestScore]
+
+            if len(zombiesInPlay) == 1:
+                # only one winner, so end the game
+                break
+            else:
+                # multiple winners, so go on to the tie-breaking round.
+                logging.debug('TIE BREAKING ROUND')
+                if VERBOSE: print('Tie breaking round with %s' % (', '.join([zombie.name for zombie in zombiesInPlay])))
+                tieBreakingRound = True
 
 
 def runTournament(zombies, numGames):
