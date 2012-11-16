@@ -201,6 +201,33 @@ def roll():
         CURRENT_CUP.remove(newDie)
         CURRENT_HAND.append(newDie)
 
+    # roll the dice
+    logging.debug('Hand is %s' % (', '.join(CURRENT_HAND)))
+    logging.debug('Cup has %s: %s' % (len(CURRENT_CUP), ', '.join(CURRENT_CUP)))
+    results = []
+    for die in CURRENT_HAND:
+        results.append(rollDie(die))
+    resultStr = ['%s_%s' % (result[COLOR][0].upper(), result[ICON][:2]) for result in results]
+    logging.debug('%s rolled %s' % (CURRENT_ZOMBIE, ', '.join(resultStr)))
+    if VERBOSE: print(', '.join(['%s %s' % (result[COLOR].title(), result[ICON]) for result in results]))
+
+    # count the shotguns and remove them from the hand
+    for result in results:
+        if result[ICON] == SHOTGUN:
+            NUM_SHOTGUNS_ROLLED += 1
+            logging.debug('Removing ' + result[COLOR] + ' from hand for shotgun.')
+            CURRENT_HAND.remove(result[COLOR])
+
+    # count the brains and remove them from the hand
+    for result in results:
+        if result[ICON] == BRAINS:
+            ROLLED_BRAINS.append(result[COLOR])
+            NUM_BRAINS_ROLLED += 1
+            logging.debug('Removing ' + result[COLOR] + ' from hand for brains.')
+            CURRENT_HAND.remove(result[COLOR])
+
+    return results
+
 
 def rollDie(die):
     """Returns the result of a single die roll as a dictionary with keys 'color' and 'icon'.
