@@ -308,12 +308,46 @@ class ZombieBot_MinNumShotgunsThenStops(object):
                     shotguns += 1
 
 
+class ZombieBot_HumanPlayer(object):
+    """This "bot" actually calls input() and print() to let a human player play Zombie Dice against the other bots."""
+    def __init__(self, name):
+        self.name = name
+
+    def turn(self, gameState):
+        brains = '' # number of brains rolled this turn
+        shotguns = '' # number of shotguns rolled this turn
+        print('Scores:')
+        for zombieName, zombieScore in gameState[SCORES].items():
+            print('\t%s - %s' % (zombieScore, zombieName))
+        print()
+
+        while True:
+            results = roll()
+            brains   += ''.join([x[COLOR][0].upper() for x in results if x[ICON] == BRAINS])
+            shotguns += ''.join([x[COLOR][0].upper() for x in results if x[ICON] == SHOTGUN])
+
+            print('Roll:')
+            for i in range(3):
+                print(results[i][COLOR], '\t', results[i][ICON])
+            print()
+            print('Brains  : %s\t\tShotguns: %s' % (brains, shotguns))
+            if len(shotguns) < 3:
+                print('Press Enter to roll again, or enter "S" to stop.')
+                response = input()
+                if response.upper().startswith('S'):
+                    return
+            else:
+                print('Shotgunned! Press Enter to continue.')
+                input()
+                return
+
+
 def main():
     # fill up the zombies list with different bot objects, and then pass to runTournament()
     zombies = []
-    zombies.append(ZombieBot_RandomCoinFlip('RandomBot'))
+    zombies.append(ZombieBot_HumanPlayer('Human'))
     zombies.append(ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2))
-    runTournament(zombies, 1000)
+    runTournament(zombies, 1)
 
 
 if __name__ == '__main__':
