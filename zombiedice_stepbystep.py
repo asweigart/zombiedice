@@ -194,6 +194,13 @@ def roll():
         CURRENT_CUP.extend(ROLLED_BRAINS)
         ROLLED_BRAINS = []
 
+    # add new dice to hand from cup until there are 3 dice in the hand
+    while len(CURRENT_HAND) < 3:
+        newDie = random.choice(CURRENT_CUP)
+        logging.debug('%s die added to hand from cup.' % (newDie))
+        CURRENT_CUP.remove(newDie)
+        CURRENT_HAND.append(newDie)
+
 
 def rollDie(die):
     """Returns the result of a single die roll as a dictionary with keys 'color' and 'icon'.
