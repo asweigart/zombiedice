@@ -58,6 +58,11 @@ def runGame(zombies):
         if 'name' not in dir(zombie):
             logging.error('All zombies need a name member.')
 
+    # call every zombie's newGame() method, if it has one
+    for zombie in zombies:
+        if 'newGame' in dir(zombie):
+            zombie.newGame()
+
 
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
