@@ -119,6 +119,11 @@ def runGame(zombies):
                 if VERBOSE: print('Tie breaking round with %s' % (', '.join([zombie.name for zombie in zombiesInPlay])))
                 tieBreakingRound = True
 
+    # call every zombie's endGame() method, if it has one
+    for zombie in zombies:
+        if 'endGame' in dir(zombie):
+            zombie.endGame(copy.deepcopy(gameState))
+
 
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
