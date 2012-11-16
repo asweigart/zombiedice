@@ -83,6 +83,21 @@ def runGame(zombies):
             NUM_BRAINS_ROLLED = 0
             ROLLED_BRAINS = [] # list of dice colors, in case of "ran out of dice"
 
+            # run the turn (don't pass the original gameState)
+            zombie.turn(copy.deepcopy(gameState))
+            if VERBOSE and NUM_SHOTGUNS_ROLLED < 3: print('%s stops.' % (CURRENT_ZOMBIE))
+            if VERBOSE and NUM_SHOTGUNS_ROLLED >= 3: print('%s is shotgunned.' % (CURRENT_ZOMBIE))
+
+            # add brains to the score
+            if NUM_SHOTGUNS_ROLLED < 3:
+                gameState[SCORES][zombie.name] += NUM_BRAINS_ROLLED
+
+            if gameState[SCORES][zombie.name] >= 13:
+                # once a player reaches 13 brains, it becomes the last round
+                lastRound = True
+                logging.debug('LAST ROUND')
+                if VERBOSE: print('%s has reached 13 brains.' % (zombie.name))
+
 
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
