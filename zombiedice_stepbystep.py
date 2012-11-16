@@ -281,8 +281,9 @@ def rollDie(die):
 
 class ZombieBot_RandomCoinFlip(object):
     """After the first roll, this bot always has a fifty-fifty chance of deciding to roll again or stopping."""
-    def __init__(self, name):
+    def __init__(self, name, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
 
     def turn(self, gameState):
         results = roll() # first roll
@@ -293,8 +294,9 @@ class ZombieBot_RandomCoinFlip(object):
 
 class ZombieBot_MinNumShotgunsThenStops(object):
     """This bot keeps rolling until it has rolled a minimum number of shotguns."""
-    def __init__(self, name, minShotguns=2):
+    def __init__(self, name, minShotguns=2, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
         self.minShotguns = minShotguns
 
     def turn(self, gameState):
@@ -310,8 +312,9 @@ class ZombieBot_MinNumShotgunsThenStops(object):
 
 class ZombieBot_HumanPlayer(object):
     """This "bot" actually calls input() and print() to let a human player play Zombie Dice against the other bots."""
-    def __init__(self, name):
+    def __init__(self, name, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
 
     def turn(self, gameState):
         brains = '' # number of brains rolled this turn
@@ -346,8 +349,9 @@ class ZombieBot_RollsUntilInTheLead(object):
     """This bot's strategy is to keep rolling for brains until they are in the lead (plus an optional number of points). This is a high risk strategy, because if the opponent gets an early lead then this bot will take greater and greater risks to get in the lead in a single turn.
 
     However, once in the lead, this bot will just use Zombie_MinNumShotgunsThenStops's strategy."""
-    def __init__(self, name, plusLead=0):
+    def __init__(self, name, plusLead=0, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
         self.plusLead = plusLead
         self.altZombieStrategy = ZombieBot_MinNumShotgunsThenStops(name + '_alt', 2)
 
@@ -370,8 +374,9 @@ class ZombieBot_RollsUntilInTheLead(object):
 class ZombieBot_MonteCarlo(object):
     """This bot does several experimental dice rolls with the current cup, and re-rolls if the chance of 3 shotguns is less than "riskiness".
     The bot doesn't care how many brains it has rolled or what the relative scores are, it just looks at the chance of death for the next roll given the current cup."""
-    def __init__(self, name, riskiness=50, numExperiments=100):
+    def __init__(self, name, riskiness=50, numExperiments=100, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
         self.riskiness = riskiness
         self.numExperiments = numExperiments
 
