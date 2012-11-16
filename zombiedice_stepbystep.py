@@ -342,12 +342,37 @@ class ZombieBot_HumanPlayer(object):
                 return
 
 
+class ZombieBot_RollsUntilInTheLead(object):
+    """This bot's strategy is to keep rolling for brains until they are in the lead (plus an optional number of points). This is a high risk strategy, because if the opponent gets an early lead then this bot will take greater and greater risks to get in the lead in a single turn.
+
+    However, once in the lead, this bot will just use Zombie_MinNumShotgunsThenStops's strategy."""
+    def __init__(self, name, plusLead=0):
+        self.name = name
+        self.plusLead = plusLead
+        self.altZombieStrategy = ZombieBot_MinNumShotgunsThenStops(name + '_alt', 2)
+
+    def turn(self, gameState):
+        highestScoreThatIsntMine = max([zombieScore for zombieName, zombieScore in gameState[SCORES].items() if zombieName != CURRENT_ZOMBIE])
+
+        if highestScoreThatIsntMine + self.plusLead >= gameState[SCORES][CURRENT_ZOMBIE]:
+            results = roll() # roll at least once
+            brains = len([True for result in results if result[ICON] == BRAINS])
+            myScore = gameState[SCORES][CURRENT_ZOMBIE]
+
+            while results != [] and myScore + brains <= highestScoreThatIsntMine + self.plusLead:
+                results = roll()
+                brains += len([True for result in results if result[ICON] == BRAINS])
+        else:
+            # already in the lead, so just use altZombieStrategy's turn()
+            self.altZombieStrategy.turn(gameState)
+
+
 def main():
     # fill up the zombies list with different bot objects, and then pass to runTournament()
     zombies = []
-    zombies.append(ZombieBot_HumanPlayer('Human'))
+    zombies.append(ZombieBot_RollsUntilInTheLead('InTheLead'))
     zombies.append(ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2))
-    runTournament(zombies, 1)
+    runTournament(zombies, 1000)
 
 
 if __name__ == '__main__':
