@@ -124,6 +124,19 @@ def runGame(zombies):
         if 'endGame' in dir(zombie):
             zombie.endGame(copy.deepcopy(gameState))
 
+    # rank bots by score
+    ranking = sorted(gameState[SCORES].items(), key=lambda x: x[1], reverse=True)
+    highestScore = ranking[0][1]
+    logging.debug('Ranking: %s' % (ranking))
+    if VERBOSE: print('Final Scores: %s' % (', '.join(['%s %s' % (x[0], x[1]) for x in ranking])))     #(', '.join(['%s %s' % (name, score) for name, score in ranking.items()])))
+
+    # winners are the bot(s) with the highest score
+    winners = [x[0] for x in ranking if x[1] == highestScore]
+    logging.debug('Winner(s): %s' % (winners))
+    if VERBOSE: print('Winner%s: %s' % ((len(winners) != 1 and 's' or ''), ', '.join(winners)))
+
+    return gameState
+
 
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
