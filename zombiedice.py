@@ -26,15 +26,12 @@ http://zombiedice.sjgames.com/
 Zombie Dice simulator by Al Sweigart (al@inventwithpython.com)
 (I'm not affiliated with SJ Games. This is a hobby project.)
 
-TODO - add instructions for writing bots.
-
 Note: A "turn" is a single player's turn. A "round" is every player having one turn.
 Note: Since all variables are public in Python, it is trivial to have a bot that hacks the tournament code. Inspect the bot code before running it.
 Note: We don't use OOP for bots. A "zombie dice bot" simply implements a turn() method which calls a global roll() function as often as it likes. See documentation for details.
 """
 
-
-import copy, random, logging, sys, itertools
+import logging, random, sys, copy
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.debug('Start of the program.')
 
@@ -50,6 +47,7 @@ FOOTSTEPS = 'footsteps'
 SCORES = 'scores'
 
 VERBOSE = False # if True, program outputs the actions that happen during the game
+
 
 def runGame(zombies):
     """Runs a single game of zombie dice. zombies is a list of zombie dice bot objects."""
@@ -159,6 +157,7 @@ def runGame(zombies):
 
     return gameState
 
+
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
     zombies is a list of zombie bot objects. numGames is an int of how many games to run."""
@@ -196,9 +195,6 @@ def runTournament(zombies, numGames):
     for tiedName, tiedScore in tiesRanking:
         print('    %s %s' % (tiedName.rjust(maxNameLength), str(tiedScore).rjust(len(str(numGames)))))
 
-def runOneOnOne(zombies, numGames):
-    # have each zombie play every other zombie in a one-on-one match
-    pass # TODO
 
 def roll():
     """This global function is called by a zombie bot object to indicate that they wish to roll the dice.
@@ -283,22 +279,17 @@ def rollDie(die):
 
 
 
-# ==== SIMPLE ZOMBIE BOTS =========================
-class ZombieBot_MinNumBrainsThenStops(object):
-    """This bot keeps rolling until it has acquired a minimum number of brains."""
-    def __init__(self, name, minBrains):
+class ZombieBot_RandomCoinFlip(object):
+    """After the first roll, this bot always has a fifty-fifty chance of deciding to roll again or stopping."""
+    def __init__(self, name):
         self.name = name
-        self.minBrains = minBrains
 
     def turn(self, gameState):
-        brains = 0 # number of brains rolled this turn
-        while brains < self.minBrains:
+        results = roll() # first roll
+
+        while results and random.randint(0, 1) == 0:
             results = roll()
-            if results == []:
-                return
-            for i in results:
-                if i[ICON] == BRAINS:
-                    brains += 1
+
 
 class ZombieBot_MinNumShotgunsThenStops(object):
     """This bot keeps rolling until it has rolled a minimum number of shotguns."""
@@ -315,86 +306,6 @@ class ZombieBot_MinNumShotgunsThenStops(object):
             for i in results:
                 if i[ICON] == SHOTGUN:
                     shotguns += 1
-
-
-class ZombieBot_MinNumBrainsShotgunsThenStops(object):
-    """This bot keeps rolling until it has rolled a minimum number of brains OR shotguns."""
-    def __init__(self, name, minBrains, minShotguns):
-        self.name = name
-        self.minBrains = minBrains
-        self.minShotguns = minShotguns
-
-    def turn(self, gameState):
-        shotguns = 0 # number of shotguns rolled this turn
-        brains = 0 # number of brains rolled this turn
-        while shotguns < self.minShotguns and brains < self.minBrains:
-            results = roll()
-            if results == []:
-                return
-            for i in results:
-                if i[ICON] == SHOTGUN:
-                    shotguns += 1
-                elif i[ICON] == BRAINS:
-                    brains += 1
-
-class ZombieBot_RollsUntilInTheLead(object):
-    """This bot's strategy is to keep rolling for brains until they are in the lead (plus an optional number of points). This is a high risk strategy, because if the opponent gets an early lead then this bot will take greater and greater risks to get in the lead in a single turn.
-
-    However, once in the lead, this bot will just use Zombie_MinNumShotgunsThenStops's strategy."""
-    def __init__(self, name, plusLead=0):
-        self.name = name
-        self.plusLead = plusLead
-        self.altZombieStrategy = ZombieBot_MinNumShotgunsThenStops(name + '_alt', 2)
-
-    def turn(self, gameState):
-        highestScoreThatIsntMine = max([zombieScore for zombieName, zombieScore in gameState[SCORES].items() if zombieName != CURRENT_ZOMBIE])
-
-        if highestScoreThatIsntMine + self.plusLead >= gameState[SCORES][CURRENT_ZOMBIE]:
-            results = roll() # roll at least once
-            brains = len([True for result in results if result[ICON] == BRAINS])
-            myScore = gameState[SCORES][CURRENT_ZOMBIE]
-
-            while results != [] and myScore + brains <= highestScoreThatIsntMine + self.plusLead:
-                results = roll()
-                brains += len([True for result in results if result[ICON] == BRAINS])
-        else:
-            # already in the lead, so just use altZombieStrategy's turn()
-            self.altZombieStrategy.turn(gameState)
-
-
-class ZombieBot_MinGreenBrainsThenStops(object):
-    """This bot will keep rolling until it has BOTH a minimum number of brains and a minimum number of green brains. The idea being that if the bot has rolled several non-green brains, there are still green brains out there that give it good odds to roll in the future.
-
-    This bot ignores how many shotguns it has rolled."""
-    def __init__(self, name, minGreenBrains, minAllBrains):
-        self.name = name
-        self.minGreenBrains = minGreenBrains
-        self.minAllBrains = minAllBrains
-
-    def turn(self, gameState):
-        greenBrains = 0 # number of GREEN brains rolled this turn
-        allBrains = 0 # number of brains rolled this turn
-        while greenBrains < self.minGreenBrains or allBrains < self.minAllBrains:
-            results = roll()
-            if results == []:
-                return
-            for i in results:
-                if i[ICON] == BRAINS and i[COLOR] == GREEN:
-                    greenBrains += 1
-                if i[ICON] == BRAINS:
-                    allBrains += 1
-
-
-class ZombieBot_RandomCoinFlip(object):
-    """After the first roll, this bot always has a fifty-fifty chance of deciding to roll again or stopping."""
-    def __init__(self, name):
-        self.name = name
-
-    def turn(self, gameState):
-        results = roll() # first roll
-
-        while results and random.randint(0, 1) == 0:
-            results = roll()
 
 
 class ZombieBot_HumanPlayer(object):
@@ -431,10 +342,35 @@ class ZombieBot_HumanPlayer(object):
                 return
 
 
+class ZombieBot_RollsUntilInTheLead(object):
+    """This bot's strategy is to keep rolling for brains until they are in the lead (plus an optional number of points). This is a high risk strategy, because if the opponent gets an early lead then this bot will take greater and greater risks to get in the lead in a single turn.
+
+    However, once in the lead, this bot will just use Zombie_MinNumShotgunsThenStops's strategy."""
+    def __init__(self, name, plusLead=0):
+        self.name = name
+        self.plusLead = plusLead
+        self.altZombieStrategy = ZombieBot_MinNumShotgunsThenStops(name + '_alt', 2)
+
+    def turn(self, gameState):
+        highestScoreThatIsntMine = max([zombieScore for zombieName, zombieScore in gameState[SCORES].items() if zombieName != CURRENT_ZOMBIE])
+
+        if highestScoreThatIsntMine + self.plusLead >= gameState[SCORES][CURRENT_ZOMBIE]:
+            results = roll() # roll at least once
+            brains = len([True for result in results if result[ICON] == BRAINS])
+            myScore = gameState[SCORES][CURRENT_ZOMBIE]
+
+            while results != [] and myScore + brains <= highestScoreThatIsntMine + self.plusLead:
+                results = roll()
+                brains += len([True for result in results if result[ICON] == BRAINS])
+        else:
+            # already in the lead, so just use altZombieStrategy's turn()
+            self.altZombieStrategy.turn(gameState)
+
+
 class ZombieBot_MonteCarlo(object):
     """This bot does several experimental dice rolls with the current cup, and re-rolls if the chance of 3 shotguns is less than "riskiness".
     The bot doesn't care how many brains it has rolled or what the relative scores are, it just looks at the chance of death for the next roll given the current cup."""
-    def __init__(self, name, riskiness=50, numExperiments=10):
+    def __init__(self, name, riskiness=50, numExperiments=100):
         self.name = name
         self.riskiness = riskiness
         self.numExperiments = numExperiments
@@ -495,101 +431,13 @@ class ZombieBot_MonteCarlo(object):
         return shotguns
 
 
-class ZombieBot_Calculate(object):
-    """This bot does calculates the odds of dying with the current cup, and re-rolls if the chance of 3 shotguns is less than "riskiness".
-    The bot doesn't care how many brains it has rolled or what the relative scores are, it just looks at the chance of death for the next roll given the current cup."""
-
-    pass
-
-    # TODO - finsih
-    """
-    RED_SHOTGUN_CHANCE    = 3.0 / 6.0
-    YELLOW_SHOTGUN_CHANCE = 2.0 / 6.0
-    GREEN_SHOTGUN_CHANCE  = 1.0 / 6.0
-    SHOTGUN_CHANCE = {RED:    RED_SHOTGUN_CHANCE,
-                      YELLOW: YELLOW_SHOTGUN_CHANCE,
-                      GREEN:  GREEN_SHOTGUN_CHANCE}
-    NONSHOTGUN_CHANCE = {RED:    1.0 - RED_SHOTGUN_CHANCE,
-                         YELLOW: 1.0 - YELLOW_SHOTGUN_CHANCE,
-                         GREEN:  1.0 - GREEN_SHOTGUN_CHANCE}
-
-    def __init__(self, name, riskiness=50):
-        self.name = name
-        self.riskiness = riskiness
-
-    def turn(self, gameState):
-        results = roll() # always do a first roll
-        shotguns = len([True for i in results if i[ICON] == SHOTGUN]) # count shotguns from first roll
-
-        if shotguns == 3:
-            return # early exit if we rolled three shotguns on the first roll
-
-        while True:
-            cup = copy.copy(CURRENT_CUP)
-            rolledBrains = copy.copy(ROLLED_BRAINS)
-            # "ran out of dice", so put the rolled brains back into the cup
-            if len(cup) < 3:
-                cup.extend(rolledBrains)
-
-            # calculate chance of death
-            chanceDeath = 0.0
-            totalRolls = 0
-            for dice in itertools.permutations(cup):
-                dice = dice[:3] # only use first three dice
-                numRedDice =    len([True for die in dice if die == RED])
-                numGreenDice =  len([True for die in dice if die == GREEN])
-                numYellowDice = len([True for die in dice if die == YELLOW])
-
-                # find chance of 1 and only 1 shotgun
-                oneShotgun = (SHOTGUN_CHANCE[dice[0]] * NONSHOTGUN_CHANCE[dice[1]] * NONSHOTGUN_CHANCE[dice[2]]) + \
-                             (NONSHOTGUN_CHANCE[dice[0]] * SHOTGUN_CHANCE[dice[1]] * NONSHOTGUN_CHANCE[dice[2]]) + \
-                             (NONSHOTGUN_CHANCE[dice[0]] * NONSHOTGUN_CHANCE[dice[1]] * SHOTGUN_CHANCE[dice[2]])
-
-                # find chance of 2 and only 2 shotguns
-                twoShotgunsChance = (SHOTGUN_CHANCE[dice[0]] * NONSHOTGUN_CHANCE[dice[1]] * NONSHOTGUN_CHANCE[dice[2]]) + \
-                                    (NONSHOTGUN_CHANCE[dice[0]] * SHOTGUN_CHANCE[dice[1]] * NONSHOTGUN_CHANCE[dice[2]]) + \
-                                    (NONSHOTGUN_CHANCE[dice[0]] * NONSHOTGUN_CHANCE[dice[1]] * SHOTGUN_CHANCE[dice[2]])
-
-                # find chance of 3 and only 3 shotguns
-                threeShotgunsChance = SHOTGUN_CHANCE[dice[0]] + SHOTGUN_CHANCE[dice[1]] + SHOTGUN_CHANCE[dice[2]]
-
-                chanceDeath += (numRedDice * (3/6.0)) + (numYellowDice * (2/6.0)) + (numGreenDice * (1/6.0))
-                totalRolls += 1
-            # TODO - ACK! This is wrong, this is the chance of a shotgun. There can be multiple shotguns, and we need to factor in the shotguns the player already has.
-            print('>>>>> Chance of death: %s' % (chanceDeath/totalRolls)
-    """
-
-
-# ==== RUN TOURNAMENT CODE ======================
 def main():
-    global VERBOSE
-    VERBOSE = False
-
     # fill up the zombies list with different bot objects, and then pass to runTournament()
     zombies = []
-    #zombies.append(ZombieBot_MinNumBrainsThenStops('Min2brains', 2))
-    #zombies.append(ZombieBot_MinNumBrainsThenStops('Min3brains', 3))
-    #zombies.append(ZombieBot_MinNumShotgunsThenStops('Min1shotguns', 1))
-    zombies.append(ZombieBot_MinNumShotgunsThenStops('Min2shotguns', 2))
-    #zombies.append(ZombieBot_MinGreenBrainsThenStops('Min3brains1green', 1, 3))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min3b2s', 3, 2))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min4b2s', 4, 2))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min5b2s', 5, 2))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min6b2s', 6, 2))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min7b2s', 7, 2))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min8b2s', 8, 2))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min9b2s', 9, 2))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min10b2s', 10, 2))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min11b2s', 11, 2))
-    #zombies.append(ZombieBot_MinNumBrainsShotgunsThenStops('Min99b2s', 99, 2))
-    #zombies.append(ZombieBot_RollsUntilInTheLead('RollsUntilLead'))
-    #zombies.append(ZombieBot_RollsUntilInTheLead('RollsUntilLead+1', 1))
-    zombies.append(ZombieBot_RandomCoinFlip('RandomCoinFlip'))
-    #zombies.append(ZombieBot_HumanPlayer('Al'))
-    #zombies.append(ZombieBot_MonteCarlo('MonteCarlo100', 50, 100))
-    #zombies.append(ZombieBot_MonteCarlo('MonteCarlo200', 50, 200))
-    #zombies.append(ZombieBot_Calculate('Calculate50', 50))
+    zombies.append(ZombieBot_MonteCarlo('MonteCarlo', 40, 100))
+    zombies.append(ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2))
     runTournament(zombies, 1000)
+
 
 if __name__ == '__main__':
     main()
