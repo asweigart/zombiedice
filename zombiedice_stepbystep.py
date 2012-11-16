@@ -45,6 +45,19 @@ def runGame(zombies):
                  'scores': playerScores,
                  'round': 0}
 
+    # validate zombie objects, return None to signify an aborted game
+    if len(playerOrder) != len(set(playerOrder)): # set() will get rid of any duplicates
+        logging.error('Zombies must have unique names.')
+        return
+    if len(playerOrder) < 2:
+        logging.error('Need at least two zombies to play.')
+        return
+    for zombie in zombies:
+        if 'turn' not in dir(zombie):
+            logging.error('All zombies need a turn() method.')
+        if 'name' not in dir(zombie):
+            logging.error('All zombies need a name member.')
+
 
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
