@@ -30,7 +30,20 @@ VERBOSE = False # if True, program outputs the actions that happen during the ga
 
 def runGame(zombies):
     """Runs a single game of zombie dice. zombies is a list of zombie dice bot objects."""
-    pass
+    global CURRENT_ZOMBIE # string of the zombie whose turn it is currently
+    global CURRENT_CUP # list of dice strings (i.e. 'red', 'yellow', 'green')
+    global CURRENT_HAND # list of dice being rolled (should always be three)
+    global NUM_SHOTGUNS_ROLLED # number of shotguns rolled this turn
+    global NUM_BRAINS_ROLLED # number of brains rolled this turn
+    global ROLLED_BRAINS # list of dice strings for each brain rolled, used in the rare event we run out of brain dice
+
+    # create a new game state object
+    playerScores = dict([(zombie.name, 0) for zombie in zombies])
+    playerOrder = [zombie.name for zombie in zombies]
+    logging.debug('Player order: ' + ', '.join(playerOrder))
+    gameState = {'order': playerOrder,
+                 'scores': playerScores,
+                 'round': 0}
 
 
 def runTournament(zombies, numGames):
