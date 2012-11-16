@@ -11,7 +11,7 @@ Note: Since all variables are public in Python, it is trivial to have a bot that
 Note: We don't use OOP for bots. A "zombie dice bot" simply implements a turn() method which calls a global roll() function as often as it likes. See documentation for details.
 """
 
-import logging, random, sys
+import logging, random, sys, copy
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.debug('Start of the program.')
 
@@ -24,6 +24,7 @@ YELLOW = 'yellow'
 SHOTGUN = 'shotgun'
 BRAINS = 'brains'
 FOOTSTEPS = 'footsteps'
+SCORES = 'scores'
 
 VERBOSE = False # if True, program outputs the actions that happen during the game
 
@@ -62,6 +63,25 @@ def runGame(zombies):
     for zombie in zombies:
         if 'newGame' in dir(zombie):
             zombie.newGame()
+
+    # set up for a new game
+    zombiesInPlay = copy.copy(zombies) # all zombies play
+    while True: # game loop
+        gameState['round'] += 1
+        logging.debug('ROUND #%s, scores: %s' % (gameState['round'], gameState[SCORES]))
+        if VERBOSE: print('Round #%s' % (gameState['round']))
+        for zombie in zombiesInPlay:
+            CURRENT_ZOMBIE = zombie.name
+            logging.debug('NEW TURN: %s' % (CURRENT_ZOMBIE))
+            if VERBOSE: print("%s's turn." % (CURRENT_ZOMBIE))
+
+            # set up for a new turn
+            CURRENT_CUP = [RED] * 3 + [YELLOW] * 4 + [GREEN] * 6
+            random.shuffle(CURRENT_CUP)
+            CURRENT_HAND = []
+            NUM_SHOTGUNS_ROLLED = 0
+            NUM_BRAINS_ROLLED = 0
+            ROLLED_BRAINS = [] # list of dice colors, in case of "ran out of dice"
 
 
 def runTournament(zombies, numGames):
