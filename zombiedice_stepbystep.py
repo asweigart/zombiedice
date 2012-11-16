@@ -188,6 +188,11 @@ def roll():
     logging.debug(CURRENT_ZOMBIE + ' rolls. (brains: %s, shotguns: %s)' % (NUM_BRAINS_ROLLED, NUM_SHOTGUNS_ROLLED))
     if VERBOSE: print('%s rolls. (brains: %s, shotguns: %s)' % (CURRENT_ZOMBIE, NUM_BRAINS_ROLLED, NUM_SHOTGUNS_ROLLED))
 
+    # "ran out of dice", so put the rolled brains back into the cup
+    if 3 - len(CURRENT_HAND) > len(CURRENT_CUP):
+        logging.debug('Out of dice! Putting rolled brains back into cup.')
+        CURRENT_CUP.extend(ROLLED_BRAINS)
+        ROLLED_BRAINS = []
 
 
 def rollDie(die):
