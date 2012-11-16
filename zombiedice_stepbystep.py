@@ -367,10 +367,74 @@ class ZombieBot_RollsUntilInTheLead(object):
             self.altZombieStrategy.turn(gameState)
 
 
+class ZombieBot_MonteCarlo(object):
+    """This bot does several experimental dice rolls with the current cup, and re-rolls if the chance of 3 shotguns is less than "riskiness".
+    The bot doesn't care how many brains it has rolled or what the relative scores are, it just looks at the chance of death for the next roll given the current cup."""
+    def __init__(self, name, riskiness=50, numExperiments=100):
+        self.name = name
+        self.riskiness = riskiness
+        self.numExperiments = numExperiments
+
+    def turn(self, gameState):
+        results = roll() # always do a first roll
+        shotguns = len([True for i in results if i[ICON] == SHOTGUN]) # count shotguns from first roll
+
+        if shotguns == 3:
+            return # early exit if we rolled three shotguns on the first roll
+
+        while True:
+            # run experiments
+            deaths = 0
+            for i in range(self.numExperiments):
+                if shotguns + self.simulatedRollShotguns() >= 3:
+                    deaths += 1
+
+            # roll if percentage of deaths < riskiness%
+            if deaths / float(self.numExperiments) * 100 < self.riskiness:
+                results = roll() # this will update the CURRENT_CUP and ROLLED_BRAINS globals that simulatedRollShotguns() uses.
+                shotguns += len([True for i in results if i[ICON] == SHOTGUN])
+                if shotguns >= 3:
+                    return
+            else:
+                return
+
+    def simulatedRollShotguns(self):
+        """Calculates the number of shotguns rolled with the current cup and rolled brains. (Rolled brains is only used in the rare case that we run out of dice.)"""
+        shotguns = 0
+        cup = copy.copy(CURRENT_CUP)
+        rolledBrains = copy.copy(ROLLED_BRAINS)
+
+        # "ran out of dice", so put the rolled brains back into the cup
+        if len(cup) < 3:
+            cup.extend(rolledBrains)
+            rolledBrains = []
+
+        # add new dice to hand from cup until there are 3 dice in the hand
+        hand = []
+        for i in range(3):
+            newDie = random.choice(cup)
+            logging.debug('%s die added to hand from cup.' % (newDie))
+            cup.remove(newDie)
+            hand.append(newDie)
+
+        # roll the dice
+        results = []
+        for die in hand:
+            results.append(rollDie(die))
+
+        # count the shotguns and remove them from the hand
+        for result in results:
+            if result[ICON] == SHOTGUN:
+                shotguns += 1
+                hand.remove(result[COLOR])
+
+        return shotguns
+
+
 def main():
     # fill up the zombies list with different bot objects, and then pass to runTournament()
     zombies = []
-    zombies.append(ZombieBot_RollsUntilInTheLead('InTheLead'))
+    zombies.append(ZombieBot_MonteCarlo('MonteCarlo', 40, 100))
     zombies.append(ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2))
     runTournament(zombies, 1000)
 
