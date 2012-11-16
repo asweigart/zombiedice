@@ -291,13 +291,29 @@ class ZombieBot_RandomCoinFlip(object):
             results = roll()
 
 
+class ZombieBot_MinNumShotgunsThenStops(object):
+    """This bot keeps rolling until it has rolled a minimum number of shotguns."""
+    def __init__(self, name, minShotguns=2):
+        self.name = name
+        self.minShotguns = minShotguns
+
+    def turn(self, gameState):
+        shotguns = 0 # number of shotguns rolled this turn
+        while shotguns < self.minShotguns:
+            results = roll()
+            if results == []:
+                return
+            for i in results:
+                if i[ICON] == SHOTGUN:
+                    shotguns += 1
+
 
 def main():
     # fill up the zombies list with different bot objects, and then pass to runTournament()
     zombies = []
-    zombies.append(ZombieBot_RandomCoinFlip('Alice'))
-    zombies.append(ZombieBot_RandomCoinFlip('Bob'))
-    runTournament(zombies, 1)
+    zombies.append(ZombieBot_RandomCoinFlip('RandomBot'))
+    zombies.append(ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2))
+    runTournament(zombies, 1000)
 
 
 if __name__ == '__main__':
