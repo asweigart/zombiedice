@@ -179,7 +179,15 @@ def runTournament(zombies, numGames):
 def roll():
     """This global function is called by a zombie bot object to indicate that they wish to roll the dice.
     The state of the game and previous rolls are held in global variables."""
-    pass
+    global CURRENT_ZOMBIE, CURRENT_CUP, CURRENT_HAND, NUM_SHOTGUNS_ROLLED, NUM_BRAINS_ROLLED, ROLLED_BRAINS
+
+    # make sure zombie can actually roll
+    if NUM_SHOTGUNS_ROLLED >= 3:
+        return []
+
+    logging.debug(CURRENT_ZOMBIE + ' rolls. (brains: %s, shotguns: %s)' % (NUM_BRAINS_ROLLED, NUM_SHOTGUNS_ROLLED))
+    if VERBOSE: print('%s rolls. (brains: %s, shotguns: %s)' % (CURRENT_ZOMBIE, NUM_BRAINS_ROLLED, NUM_SHOTGUNS_ROLLED))
+
 
 
 def rollDie(die):
