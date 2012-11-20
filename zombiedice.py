@@ -33,7 +33,7 @@ Note: We don't use OOP for bots. A "zombie dice bot" simply implements a turn() 
 
 import logging, random, sys, copy
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
-logging.debug('Start of the program.')
+logging.debug('Start of the Zombie Dice program.')
 
 # constants, to keep a typo in a string from making weird errors
 COLOR = 'color'
@@ -48,7 +48,6 @@ SCORES = 'scores'
 
 VERBOSE = False # if True, program outputs the actions that happen during the game
 
-CURRENT_GAME_NUM = None
 TOURNAMENT_STATE = None
 
 def runGame(zombies):
@@ -163,11 +162,14 @@ def runGame(zombies):
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
     zombies is a list of zombie bot objects. numGames is an int of how many games to run."""
-    global TOURNAMENT_STATE, CURRENT_GAME_NUM
-    TOURNAMENT_STATE = {'wins': dict([(zombie.name, 0) for zombie in zombies]),
-                       'ties': dict([(zombie.name, 0) for zombie in zombies])}
+    global TOURNAMENT_STATE
+    TOURNAMENT_STATE = {'gameNumber': 0,
+                        'wins': dict([(zombie.name, 0) for zombie in zombies]),
+                        'ties': dict([(zombie.name, 0) for zombie in zombies])}
 
-    for CURRENT_GAME_NUM in range(numGames):
+    print('Tournament of %s games started...' % (numGames))
+
+    for TOURNAMENT_STATE['gameNumber'] in range(numGames):
         random.shuffle(zombies) # randomize the order
         endState = runGame(zombies) # use the same zombie objects so they can remember previous games.
 
@@ -184,7 +186,7 @@ def runTournament(zombies, numGames):
                 if score[1] == highestScore:
                     TOURNAMENT_STATE['ties'][score[0]] += 1
 
-    CURRENT_GAME_NUM += 1 # increment for anything reading this value
+    TOURNAMENT_STATE['gameNumber'] += 1 # increment for anything reading this value
 
     # print out the tournament results in neatly-formatted columns.
     print('Tournament results:')

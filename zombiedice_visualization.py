@@ -1,42 +1,57 @@
-"""
-TODO
-General code cleanup and documentation
-random port
-flickr credit to that guy
-
-"""
-
-
 # Zombie Dice Simulator desktop web app
 # By Al Sweigart al@inventwithpython.com
-
-# oh god this code is messy.
-
-
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-import zombiedice, threading, time, webbrowser, os, sys, random, re
+# Zombie Cheerleader photo by Gianluca Ramalho Misiti https://secure.flickr.com/photos/grmisiti/8149582049/
 
 
-# ==============================
-# Assign the bots here:
+# oh god this code is messy. I'm sorry. I'm so sorry.
 
-BOTS = [zombiedice.ZombieBot_MonteCarlo('MonteCarlo', 40, 100),
+import zombiedice
+
+# ======================================================================================
+# See
+# Assign the bots in the tournament here by adding "ZombieBot" objects to the BOTS list:
+
+BOTS = [zombiedice.ZombieBot_MonteCarlo('MonteCarloBot', 40, 100),
+        zombiedice.ZombieBot_MonteCarlo('FastMonteCarloBot', 40, 20), # executes faster because it runs fewer experimental rolls
         zombiedice.ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2),
+        zombiedice.ZombieBot_MinNumShotgunsThenStops('Min1ShotgunBot', 1),
+        #zombiedice.ZombieBot_HumanPlayer('Human'), # uncomment if you want to play (learn the rules to Zombie Dice first though)
+        zombiedice.ZombieBot_RollsUntilInTheLead('RollsUntilInTheLeadBot'),
         zombiedice.ZombieBot_RandomCoinFlip('RandomBot'),
         ]
+# ======================================================================================
 
-# ==============================
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+import threading, time, webbrowser, os, sys, re, random, logging
+
+WEB_SERVER_PORT = random.randint(49152, 61000)
+
+SCORE_BAR_MAX_WIDTH = 350 # width in pixels in the web ui for the score bar
+
+TOURNAMENT_RUNNING = False
+TOTAL_NUM_GAMES = None
+START_TIME = None
 
 
+def main():
+    print('Zombie Dice Visualization is running. Open your browser to http://localhost:%s to view it.' % (WEB_SERVER_PORT))
+    print('Press Ctrl-C to quit.')
+    broswerOpenerThread = BrowserOpener()
+    broswerOpenerThread.start()
 
-GAMERUNNING = False
-NUMGAMES = None
-ZD_PORT = random.randint(100, 10000)
-STARTTIME = None
-TOURNAMENT_THREAD = None
+    httpd = HTTPServer(('localhost', WEB_SERVER_PORT), ZombieDiceHandler)
+    try:
+        httpd.serve_forever()
+    except (KeyboardInterrupt, SystemExit):
+        httpd.socket.close()
+        sys.exit('Quitting...')
+
 
 
 class ZombieDiceHandler(SimpleHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass # comment out this entire method if you want to see the original HTTP log messages.
+
     def output(self, msg):
         self.send_header('Content-type','text/html')
         self.end_headers()
@@ -47,173 +62,217 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
 
 
     def do_GET(self):
-        global NUMGAMES, STARTTIME, GAMERUNNING
+        global TOTAL_NUM_GAMES, START_TIME, TOURNAMENT_RUNNING
         self.send_response(200)
         reqPath = os.path.join(os.getcwd(), os.path.normpath(self.path[1:]))
 
         if os.path.isfile(reqPath):
-            mimeTypeMapping = {'.js': 'application/x-javascript',
-                               '.html': 'text/html',
-                               '.css': 'text/css',
-                               '.png': 'image/png',
-                               '.gif': 'image/gif',
-                               '.jpg': 'image/jpeg'}
-            ending = reqPath[reqPath.rfind('.'):]
-            if ending in mimeTypeMapping:
-                self.send_header('Content-type',mimeTypeMapping[ending])
-            else:
-                self.send_header('Content-type','text/plain')
-            self.end_headers()
-            fp = open(reqPath, 'rb')
-            self.wfile.write(fp.read())
+            self.serveFile(reqPath)
+
         elif self.path == '/mainstatus':
-
-            if not GAMERUNNING:
-                self.output("""
-<center>
-Run <input type="text" size="4" id="numGamesToRun" value="1000"> simulated games.<br />
-<input type="button" value="Begin Tournament" onclick="startTournament()" />
-</center>
-""")
-            elif GAMERUNNING and NUMGAMES is not None and STARTTIME is not None and zombiedice.CURRENT_GAME_NUM is not None:
-                self.output("""
-<center style="font-size:1.5em;">
-<span style="color: #00FF00">%s</span> / <span style="color: #FF0000">%s</span> Games Run<br />
-Estimate Time Remaining: <span style="color: #FF0000">%s</span>
-</center>
-""" % (zombiedice.CURRENT_GAME_NUM, NUMGAMES, estTimeRemaining(STARTTIME, zombiedice.CURRENT_GAME_NUM, NUMGAMES)))
-
-
-                if zombiedice.CURRENT_GAME_NUM == NUMGAMES:
-                    self.moreoutput('<center>(Refresh page to run a new tournament.)</center>')
-                    self.moreoutput("""<!--DONE-->""") # oh god this is a terrible way to indicate the end of the tournament
-            else:
-                pass #self.output('%s %s %s' % (NUMGAMES, STARTTIME, zombiedice.CURRENT_GAME_NUM))
+            self.renderStatus()
 
         elif self.path == '/score':
-            self.output("""
-            """) # yep, returning javascript code that will be passed to eval. Elegant.
-
-            if GAMERUNNING and NUMGAMES is not None and STARTTIME is not None and zombiedice.CURRENT_GAME_NUM is not None:
-                for zombieName in [bot.name for bot in BOTS]:
-                    self.moreoutput("""$('#%s_scorebar').css('width', '%spx'); """ % (zombieName, getScoreBarLength(zombiedice.TOURNAMENT_STATE['wins'][zombieName], NUMGAMES, 300)))
-                    self.moreoutput("""$('#%s_scorebar').css('background-color', '#%s'); """ % (zombieName, getScoreBarColor(zombieName, zombiedice.TOURNAMENT_STATE['wins'])))
-                    self.moreoutput("""$('#%s_wins').text('%s'); """ % (zombieName, zombiedice.TOURNAMENT_STATE['wins'][zombieName]))
-                    self.moreoutput("""$('#%s_ties').text('%s'); """ % (zombieName, zombiedice.TOURNAMENT_STATE['ties'][zombieName]))
+            self.renderScoreJavascript()
 
         elif self.path.startswith('/start'):
-            mo = re.search('(\d+)', self.path)
-            if mo is not None:
-                NUMGAMES = int(mo.group(1))
-            if NUMGAMES is None:
-                NUMGAMES = 1000
-            STARTTIME = time.time()
-            TOURNAMENT_THREAD = TournamentThread()
-            TOURNAMENT_THREAD.start()
-            GAMERUNNING = True
-            #self.output('Tournament started. Running %s games.' % (NUMGAMES))
+            # "/start/<NUM GAMES>" is visited when the player clicks the "Begin Tournament" button. Check the path for the number of games to run.
+            self.beginTournamentButtonPressed()
+
         elif self.path == '/':
+            self.renderMainPage()
 
-            # TODO - code to restart tournament goes here
-            if NUMGAMES is not None and zombiedice.CURRENT_GAME_NUM == NUMGAMES:
-                # restart the tournament
-                GAMERUNNING = False
-                NUMGAMES = None
-                STARTTIME = None
-                zombiedice.CURRENT_GAME_NUM = None
 
-            scoreTableHtml = []
-            for zombieName in [bot.name for bot in BOTS]:
-                scoreTableHtml.append('<tr><td>%s</td><td style="width: 300px;"><div id="%s_scorebar">&nbsp;</div></td><td><span id="%s_wins"></span></td><td><span id="%s_ties"></span></td></tr>' % (zombieName, zombieName, zombieName, zombieName))
-            scoreTableHtml = ''.join(scoreTableHtml)
+    def serveFile(self, reqPath):
+        mimeTypeMapping = {'.js': 'application/x-javascript',
+                           '.html': 'text/html',
+                           '.css': 'text/css',
+                           '.png': 'image/png',
+                           '.gif': 'image/gif',
+                           '.jpg': 'image/jpeg'}
+        ending = reqPath[reqPath.rfind('.'):]
+        if ending in mimeTypeMapping:
+            self.send_header('Content-type',mimeTypeMapping[ending])
+        else:
+            self.send_header('Content-type','text/plain')
+        self.end_headers()
+        fp = open(reqPath, 'rb')
+        self.wfile.write(fp.read())
 
+
+    def renderStatus(self):
+        if not TOURNAMENT_RUNNING:
+            # display the "Begin Tournament" button.
             self.output("""
-<html>
-<head><title>Zombie Dice Simulator</title>
-<script src="jquery-1.8.3.min.js"></script></head>
-<body>
-<img src="imgZombieCheerleader.jpg" id="cheerleader" style="position: absolute; left: -90px; top: 10px; opacity: 0.0" />
-<img src="imgTitle.png" id="title" style="position: absolute; left: 100px; top: -10px; opacity: 0.0" />
+                <center>
+                Run <input type="text" size="4" id="numGamesToRun" value="1000"> simulated games.<br />
+                <input type="button" value="Begin Tournament" onclick="startTournament()" />
+                </center>
+                """)
+        else:
+            # display the current status of the tournament simulation that is in progress
+            self.output("""
+                <center style="font-size:1.5em;">
+                <span style="color: #00FF00">%s</span> / <span style="color: #FF0000">%s</span> Games Run</center>
+                Estimate Time Remaining: <span style="color: #FF0000">%s</span>
+                """ % (zombiedice.TOURNAMENT_STATE['gameNumber'], TOTAL_NUM_GAMES, estTimeRemaining(START_TIME, zombiedice.TOURNAMENT_STATE['gameNumber'], TOTAL_NUM_GAMES)))
 
-<div id="mainstatusDiv" style="position: absolute; left: 310px; top: 120px; width: 550px; background-color: #EEEEEE; opacity: 0.0"></div>
-
-<div id="scoreDiv" style="position: absolute; left: 310px; top: 220px; width: 550px; background-color: #EEEEEE; opacity: 0.0">
-<table border="0">
-<tr><td colspan="2"></td><td>Wins</td><td>Ties</td>
-%s
-</table>
-</div>
-
-<script>
-var ajaxIntervalID = undefined;
-$('#cheerleader').animate({opacity: '+=1.0', left: '+=100'}, 600, null)
-$('#title').animate({opacity: '+=1.0', top: '+=50'}, 1000, function() {
-    updateMainStatus();
-    $('#mainstatusDiv').css('opacity', '1.0');
-    $('#scoreDiv').css('opacity', '1.0');
-})
+            if zombiedice.TOURNAMENT_STATE['gameNumber'] == TOTAL_NUM_GAMES:
+                # the javascript code checks for this text to know when to stop making repeated ajax requests for status updates
+                self.moreoutput('<center>(Refresh page to run a new tournament.)</center>')
 
 
-function updateMainStatus() {
-    console.log('updateMainStatus()')
-    $.ajax({
-      url: "mainstatus",
-      context: document.body,
-      success: function(data){
-        $('#mainstatusDiv').html(data);
-        if (data.indexOf('DONE') != -1 && ajaxIntervalID !== undefined) {
-            clearInterval(ajaxIntervalID);
-        }
-      }
-    });
+    # Returns JavaScript that will be evaluated by eval() in the web page (elegant solution, I know) to update the score table.
+    def renderScoreJavascript(self):
+        self.send_header('Content-type','text/html')
+        self.end_headers()
 
-    $.ajax({
-      url: "score",
-      context: document.body,
-      success: function(data) {
-        eval(data);
-      }
-    });
-}
+        if TOURNAMENT_RUNNING and TOTAL_NUM_GAMES is not None and START_TIME is not None and zombiedice.TOURNAMENT_STATE['gameNumber'] is not None:
+            for zombieName in [bot.name for bot in BOTS]:
+                predictedMaxWidth = int(SCORE_BAR_MAX_WIDTH * max(int(len(BOTS) / 2), 1)) # We'll assume that the bots mostly evenly win games
+                #predictedMaxWidth = SCORE_BAR_MAX_WIDTH # If the score bar keeps getting too long, just uncomment this line
+
+                scoreBarLength = int((zombiedice.TOURNAMENT_STATE['wins'][zombieName] / TOTAL_NUM_GAMES) * predictedMaxWidth)
+                scoreBarColor = getScoreBarColor(zombieName, zombiedice.TOURNAMENT_STATE['wins'])
+                wins = zombiedice.TOURNAMENT_STATE['wins'][zombieName]
+                ties = zombiedice.TOURNAMENT_STATE['ties'][zombieName]
+
+                self.moreoutput("$('#%s_scorebar').css('width', '%spx'); " % (zombieName, scoreBarLength))
+                self.moreoutput("$('#%s_scorebar').css('background-color', '#%s'); " % (zombieName, scoreBarColor))
+                self.moreoutput("$('#%s_wins').text('%s'); " % (zombieName, wins))
+                self.moreoutput("$('#%s_ties').text('%s'); " % (zombieName, ties))
 
 
-function startTournament() {
-   $.ajax({
-      url: "start/" + $("#numGamesToRun").val(),
-      context: document.body,
-      success: function(data){
-        console.log('Tournament started.');
-      }
-    });
-    ajaxIntervalID = setInterval('updateMainStatus()', 100);
-}
+    def beginTournamentButtonPressed(self):
+        global TOTAL_NUM_GAMES, TOURNAMENT_RUNNING, START_TIME
 
-</script>
-</body>
-</html>
-""" % (scoreTableHtml))
+        # path will be set to "/start/<NUM GAMES>"
+        mo = re.search('(\d+)', self.path)
+        if mo is not None:
+            TOTAL_NUM_GAMES = int(mo.group(1))
+        else:
+            TOTAL_NUM_GAMES = 1000 # default to 1000
+        START_TIME = time.time()
+
+        # start the tournament simulation in a separate thread
+        tournamentThread = TournamentThread()
+        tournamentThread.start()
+        TOURNAMENT_RUNNING = True # TOURNAMENT_RUNNING remains True after the tournament completes, until the "/" page is reloaded. Then it is set to False.
 
 
+    def renderMainPage(self):
+        global TOTAL_NUM_GAMES, TOURNAMENT_RUNNING, START_TIME
+
+        # when this page is loaded, if the previous tournmaent completed then restart the tournament:
+        if TOTAL_NUM_GAMES is not None and zombiedice.TOURNAMENT_STATE['gameNumber'] == TOTAL_NUM_GAMES:
+            TOURNAMENT_RUNNING = False # set to True after user clicks the "Begin Tournament" button in the web ui and the tournamentThread starts running.
+            TOTAL_NUM_GAMES = None # TODO - make this a member variable instead of a global
+            START_TIME = None # timestamp of when the tournament started, used for the "estimated time remaining"
+            #zombiedice.TOURNAMENT_STATE['gameNumber'] = 0 #
+
+        # create the table where each bot has a row for its score
+        scoreTableHtml = []
+        for zombieName in sorted([bot.name for bot in BOTS]):
+            scoreTableHtml.append('<tr><td>%s</td><td style="width: %spx;"><div id="%s_scorebar">&nbsp;</div></td><td><span id="%s_wins"></span></td><td><span id="%s_ties"></span></td></tr>' % (zombieName, SCORE_BAR_MAX_WIDTH, zombieName, zombieName, zombieName))
+        scoreTableHtml = ''.join(scoreTableHtml)
+
+        # output the main page's html (with the score table)
+        self.output("""
+            <html>
+            <head><title>Zombie Dice Simulator</title>
+            <script src="jquery-1.8.3.min.js"></script></head>
+            <body>
+            <img src="imgZombieCheerleader.jpg" id="cheerleader" style="position: absolute; left: -90px; top: 10px; opacity: 0.0" />
+            <img src="imgTitle.png" id="title" style="position: absolute; left: 100px; top: -10px; opacity: 0.0" />
+
+            <!-- The mainstatusDiv shows the "Begin Tournament" button, and then the number of games played along with estimated time remaining. -->
+            <div id="mainstatusDiv" style="position: absolute; left: 310px; top: 120px; width: 550px; background-color: #EEEEEE; opacity: 0.0"></div>
+
+            <!-- The scoreDiv shows how many wins and ties each bot has. -->
+            <div id="scoreDiv" style="position: absolute; left: 310px; top: 220px; width: 550px; background-color: #EEEEEE; opacity: 0.0">
+
+            <table border="0">
+            <tr><td colspan="2"></td><td>Wins</td><td>Ties</td>
+            %s
+            </table>
+            </div>
+
+
+            <script>
+            var ajaxIntervalID = undefined;
+
+            window.setTimeout(function() {
+                // display the main divs part way through the other animations
+                updateMainStatus();
+                $('#mainstatusDiv').css('opacity', '1.0');
+                $('#scoreDiv').css('opacity', '1.0');
+            }, 500);
+            $('#cheerleader').animate({opacity: '+=1.0', left: '+=100'}, 600, null)
+            $('#title').animate({opacity: '+=1.0', top: '+=50'}, 1000, function() {
+            })
+
+
+            function updateMainStatus() {
+                <!-- This ajax request contains the html for the mainstatusDiv -->
+                $.ajax({
+                  url: "mainstatus",
+                  success: function(data){
+                    $('#mainstatusDiv').html(data);
+                    if (data.indexOf('(Refresh page to run a new tournament.)') != -1 && ajaxIntervalID !== undefined) {
+                        clearInterval(ajaxIntervalID);
+                    }
+                  }
+                });
+
+                <!-- This ajax request returns JavaScript code to update the divs. -->
+                $.ajax({
+                  url: "score",
+                  success: function(data) {
+                    eval(data);
+                  }
+                });
+            }
+
+
+            function startTournament() {
+              <!-- Start the Python code for the zombie dice tournament, and start the repeated ajax calls to update the mainstatusDiv and score table -->
+              $.ajax({
+                url: "start/" + $("#numGamesToRun").val()
+              });
+              ajaxIntervalID = setInterval('updateMainStatus()', 100);
+            }
+
+            </script>
+            </body>
+            </html>
+            """ % (scoreTableHtml))
+
+
+# The bot in the lead has a bright red #FF0000 bar, whereas a bot at 0 wins has a black #000000 bar. Depending on where in between the bot's score is, the appropriate black-to-red color is returned. Returns a string like 'FF0000', without the leading '#' character.
 def getScoreBarColor(zombieName, winsState):
     maxScore = max(winsState.values())
     myScore = winsState[zombieName]
+
+    if maxScore == 0:
+        return '000000' # prevent zero division
 
     redness = int((myScore / float(maxScore)) * 255)
     redness = hex(redness)[2:].upper()
     if len(redness) == 1:
         redness = '0' + redness
-    return redness + '0000'
-
-def getScoreBarLength(wins, totalNumGames, maxLength):
-    return int((wins / totalNumGames) * maxLength)
+    return redness + '0000' # return the HTML RGB color for the bar
 
 
+# Calculates amount of time remaining for this tournament, given how long it has taken to run the previous games.
 def estTimeRemaining(startTime, currentGame, totalGames):
     lapsed = time.time() - startTime
+    if currentGame == 0:
+        return 'Unknown' # prevent zero division
     totalEstTime = lapsed * (totalGames / currentGame)
     return prettyTime(round(totalEstTime - lapsed, 1))
 
 
+# Takes parameter that is a number of seconds and returns a pretty string with the time in weeks, days, hours, minutes, and seconds.
 def prettyTime(t): # t is in seconds
     wk = day = hr = min = sec = 0
     if t > 604800:
@@ -241,26 +300,21 @@ def prettyTime(t): # t is in seconds
         t_str.append('%s min' % (min))
     t_str.append('%s sec' % (sec))
 
-    return ''.join(t_str)
+    return ' '.join(t_str)
 
 
-class ZombieWebServThread(threading.Thread):
-    def run(self):
-        httpd = HTTPServer(('127.0.0.1', ZD_PORT), ZombieDiceHandler)
-        httpd.serve_forever()
-
+# Runs the zombie dice tournament in a separate thread.
 class TournamentThread(threading.Thread):
     def run(self):
-        zombiedice.runTournament(BOTS, NUMGAMES)
-
-zomWeb = ZombieWebServThread()
-zomWeb.start()
-time.sleep(0.2)
-webbrowser.open('http://localhost:%s' % (ZD_PORT))
-
-while True:
-    time.sleep(1)
+        zombiedice.runTournament(BOTS, TOTAL_NUM_GAMES)
 
 
-# https://secure.flickr.com/photos/grmisiti/8149582049/sizes/o/in/photostream/
-# photo by Gianluca Ramalho Misiti
+class BrowserOpener(threading.Thread):
+    def run(self):
+        time.sleep(0.4) # give the server a bit of time to start
+        webbrowser.open('http://localhost:%s' % (WEB_SERVER_PORT))
+
+
+if __name__ == '__main__':
+    main()
+    # program doesn't terminate at this point because the HTTP server thread is now running
