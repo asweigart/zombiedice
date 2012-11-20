@@ -33,7 +33,7 @@ Note: We don't use OOP for bots. A "zombie dice bot" simply implements a turn() 
 
 import logging, random, sys, copy
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
-logging.debug('Start of the program.')
+logging.debug('Start of the Zombie Dice program.')
 
 # constants, to keep a typo in a string from making weird errors
 COLOR = 'color'
@@ -47,6 +47,16 @@ FOOTSTEPS = 'footsteps'
 SCORES = 'scores'
 
 VERBOSE = False # if True, program outputs the actions that happen during the game
+
+TOURNAMENT_STATE = None
+
+def main():
+    # pass runTournament() a list of bot objects
+    bots = [ZombieBot_MonteCarlo('MonteCarlo', 40, 100),
+            ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2),
+            ZombieBot_RandomCoinFlip('RandomBot'),
+            ]
+    runTournament(bots, 1000)
 
 
 def runGame(zombies):
@@ -161,10 +171,14 @@ def runGame(zombies):
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
     zombies is a list of zombie bot objects. numGames is an int of how many games to run."""
-    tournamentState = {'wins': dict([(zombie.name, 0) for zombie in zombies]),
-                       'ties': dict([(zombie.name, 0) for zombie in zombies])}
+    global TOURNAMENT_STATE
+    TOURNAMENT_STATE = {'gameNumber': 0,
+                        'wins': dict([(zombie.name, 0) for zombie in zombies]),
+                        'ties': dict([(zombie.name, 0) for zombie in zombies])}
 
-    for i in range(numGames):
+    print('Tournament of %s games started...' % (numGames))
+
+    for TOURNAMENT_STATE['gameNumber'] in range(numGames):
         random.shuffle(zombies) # randomize the order
         endState = runGame(zombies) # use the same zombie objects so they can remember previous games.
 
@@ -175,22 +189,24 @@ def runTournament(zombies, numGames):
         highestScore = ranking[0][1]
         winners = [x[0] for x in ranking if x[1] == highestScore]
         if len(winners) == 1:
-            tournamentState['wins'][ranking[0][0]] += 1
+            TOURNAMENT_STATE['wins'][ranking[0][0]] += 1
         elif len(winners) > 1:
             for score in endState[SCORES].items():
                 if score[1] == highestScore:
-                    tournamentState['ties'][score[0]] += 1
+                    TOURNAMENT_STATE['ties'][score[0]] += 1
+
+    TOURNAMENT_STATE['gameNumber'] += 1 # increment to show all games are finished
 
     # print out the tournament results in neatly-formatted columns.
     print('Tournament results:')
     maxNameLength = max([len(zombie.name) for zombie in zombies])
 
-    winsRanking = sorted(tournamentState['wins'].items(), key=lambda x: x[1], reverse=True)
+    winsRanking = sorted(TOURNAMENT_STATE['wins'].items(), key=lambda x: x[1], reverse=True)
     print('Wins:')
     for winnerName, winnerScore in winsRanking:
         print('    %s %s' % (winnerName.rjust(maxNameLength), str(winnerScore).rjust(len(str(numGames)))))
 
-    tiesRanking = sorted(tournamentState['ties'].items(), key=lambda x: x[1], reverse=True)
+    tiesRanking = sorted(TOURNAMENT_STATE['ties'].items(), key=lambda x: x[1], reverse=True)
     print('Ties:')
     for tiedName, tiedScore in tiesRanking:
         print('    %s %s' % (tiedName.rjust(maxNameLength), str(tiedScore).rjust(len(str(numGames)))))
@@ -435,13 +451,6 @@ class ZombieBot_MonteCarlo(object):
 
         return shotguns
 
-
-def main():
-    # fill up the zombies list with different bot objects, and then pass to runTournament()
-    zombies = []
-    zombies.append(ZombieBot_MonteCarlo('MonteCarlo', 40, 100))
-    zombies.append(ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2))
-    runTournament(zombies, 1000)
 
 
 if __name__ == '__main__':

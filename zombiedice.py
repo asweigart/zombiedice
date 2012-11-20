@@ -50,6 +50,15 @@ VERBOSE = False # if True, program outputs the actions that happen during the ga
 
 TOURNAMENT_STATE = None
 
+def main():
+    # pass runTournament() a list of bot objects
+    bots = [ZombieBot_MonteCarlo('MonteCarlo', 40, 100),
+            ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2),
+            ZombieBot_RandomCoinFlip('RandomBot'),
+            ]
+    runTournament(bots, 1000)
+
+
 def runGame(zombies):
     """Runs a single game of zombie dice. zombies is a list of zombie dice bot objects."""
     global CURRENT_ZOMBIE # string of the zombie whose turn it is currently
@@ -186,7 +195,7 @@ def runTournament(zombies, numGames):
                 if score[1] == highestScore:
                     TOURNAMENT_STATE['ties'][score[0]] += 1
 
-    TOURNAMENT_STATE['gameNumber'] += 1 # increment for anything reading this value
+    TOURNAMENT_STATE['gameNumber'] += 1 # increment to show all games are finished
 
     # print out the tournament results in neatly-formatted columns.
     print('Tournament results:')
@@ -442,14 +451,6 @@ class ZombieBot_MonteCarlo(object):
 
         return shotguns
 
-
-def main():
-    # fill up the zombies list with different bot objects, and then pass to runTournament()
-    zombies = [ZombieBot_MonteCarlo('MonteCarlo', 40, 100),
-               ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2),
-               ZombieBot_RandomCoinFlip('RandomBot'),
-               ]
-    runTournament(zombies, 100)
 
 
 if __name__ == '__main__':
