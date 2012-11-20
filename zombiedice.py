@@ -48,6 +48,8 @@ SCORES = 'scores'
 
 VERBOSE = False # if True, program outputs the actions that happen during the game
 
+CURRENT_GAME_NUM = None
+TOURNAMENT_STATE = None
 
 def runGame(zombies):
     """Runs a single game of zombie dice. zombies is a list of zombie dice bot objects."""
@@ -161,10 +163,11 @@ def runGame(zombies):
 def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
     zombies is a list of zombie bot objects. numGames is an int of how many games to run."""
-    tournamentState = {'wins': dict([(zombie.name, 0) for zombie in zombies]),
+    global TOURNAMENT_STATE, CURRENT_GAME_NUM
+    TOURNAMENT_STATE = {'wins': dict([(zombie.name, 0) for zombie in zombies]),
                        'ties': dict([(zombie.name, 0) for zombie in zombies])}
 
-    for i in range(numGames):
+    for CURRENT_GAME_NUM in range(numGames):
         random.shuffle(zombies) # randomize the order
         endState = runGame(zombies) # use the same zombie objects so they can remember previous games.
 
@@ -175,22 +178,24 @@ def runTournament(zombies, numGames):
         highestScore = ranking[0][1]
         winners = [x[0] for x in ranking if x[1] == highestScore]
         if len(winners) == 1:
-            tournamentState['wins'][ranking[0][0]] += 1
+            TOURNAMENT_STATE['wins'][ranking[0][0]] += 1
         elif len(winners) > 1:
             for score in endState[SCORES].items():
                 if score[1] == highestScore:
-                    tournamentState['ties'][score[0]] += 1
+                    TOURNAMENT_STATE['ties'][score[0]] += 1
+
+    CURRENT_GAME_NUM += 1 # increment for anything reading this value
 
     # print out the tournament results in neatly-formatted columns.
     print('Tournament results:')
     maxNameLength = max([len(zombie.name) for zombie in zombies])
 
-    winsRanking = sorted(tournamentState['wins'].items(), key=lambda x: x[1], reverse=True)
+    winsRanking = sorted(TOURNAMENT_STATE['wins'].items(), key=lambda x: x[1], reverse=True)
     print('Wins:')
     for winnerName, winnerScore in winsRanking:
         print('    %s %s' % (winnerName.rjust(maxNameLength), str(winnerScore).rjust(len(str(numGames)))))
 
-    tiesRanking = sorted(tournamentState['ties'].items(), key=lambda x: x[1], reverse=True)
+    tiesRanking = sorted(TOURNAMENT_STATE['ties'].items(), key=lambda x: x[1], reverse=True)
     print('Ties:')
     for tiedName, tiedScore in tiesRanking:
         print('    %s %s' % (tiedName.rjust(maxNameLength), str(tiedScore).rjust(len(str(numGames)))))
@@ -281,8 +286,9 @@ def rollDie(die):
 
 class ZombieBot_RandomCoinFlip(object):
     """After the first roll, this bot always has a fifty-fifty chance of deciding to roll again or stopping."""
-    def __init__(self, name):
+    def __init__(self, name, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
 
     def turn(self, gameState):
         results = roll() # first roll
@@ -293,8 +299,9 @@ class ZombieBot_RandomCoinFlip(object):
 
 class ZombieBot_MinNumShotgunsThenStops(object):
     """This bot keeps rolling until it has rolled a minimum number of shotguns."""
-    def __init__(self, name, minShotguns=2):
+    def __init__(self, name, minShotguns=2, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
         self.minShotguns = minShotguns
 
     def turn(self, gameState):
@@ -310,8 +317,9 @@ class ZombieBot_MinNumShotgunsThenStops(object):
 
 class ZombieBot_HumanPlayer(object):
     """This "bot" actually calls input() and print() to let a human player play Zombie Dice against the other bots."""
-    def __init__(self, name):
+    def __init__(self, name, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
 
     def turn(self, gameState):
         brains = '' # number of brains rolled this turn
@@ -346,8 +354,9 @@ class ZombieBot_RollsUntilInTheLead(object):
     """This bot's strategy is to keep rolling for brains until they are in the lead (plus an optional number of points). This is a high risk strategy, because if the opponent gets an early lead then this bot will take greater and greater risks to get in the lead in a single turn.
 
     However, once in the lead, this bot will just use Zombie_MinNumShotgunsThenStops's strategy."""
-    def __init__(self, name, plusLead=0):
+    def __init__(self, name, plusLead=0, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
         self.plusLead = plusLead
         self.altZombieStrategy = ZombieBot_MinNumShotgunsThenStops(name + '_alt', 2)
 
@@ -370,8 +379,9 @@ class ZombieBot_RollsUntilInTheLead(object):
 class ZombieBot_MonteCarlo(object):
     """This bot does several experimental dice rolls with the current cup, and re-rolls if the chance of 3 shotguns is less than "riskiness".
     The bot doesn't care how many brains it has rolled or what the relative scores are, it just looks at the chance of death for the next roll given the current cup."""
-    def __init__(self, name, riskiness=50, numExperiments=100):
+    def __init__(self, name, riskiness=50, numExperiments=100, profileImageFile=None):
         self.name = name
+        self.profileImageFile = profileImageFile
         self.riskiness = riskiness
         self.numExperiments = numExperiments
 
@@ -433,10 +443,11 @@ class ZombieBot_MonteCarlo(object):
 
 def main():
     # fill up the zombies list with different bot objects, and then pass to runTournament()
-    zombies = []
-    zombies.append(ZombieBot_MonteCarlo('MonteCarlo', 40, 100))
-    zombies.append(ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2))
-    runTournament(zombies, 1000)
+    zombies = [ZombieBot_MonteCarlo('MonteCarlo', 40, 100),
+               ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2),
+               ZombieBot_RandomCoinFlip('RandomBot'),
+               ]
+    runTournament(zombies, 100)
 
 
 if __name__ == '__main__':
