@@ -3,12 +3,11 @@
 # Zombie Cheerleader photo by Gianluca Ramalho Misiti https://secure.flickr.com/photos/grmisiti/8149582049/
 
 
-# oh god this code is messy. I'm sorry. I'm so sorry.
+# oh god this code is messy.
 
 import zombiedice
 
 # ======================================================================================
-# See
 # Assign the bots in the tournament here by adding "ZombieBot" objects to the BOTS list:
 
 BOTS = [zombiedice.ZombieBot_MonteCarlo('MonteCarloBot', 40, 100),
@@ -21,8 +20,15 @@ BOTS = [zombiedice.ZombieBot_MonteCarlo('MonteCarloBot', 40, 100),
         ]
 # ======================================================================================
 
-from http.server import HTTPServer, SimpleHTTPRequestHandler
-import threading, time, webbrowser, os, sys, re, random, logging
+import threading, time, webbrowser, os, sys, re, random, logging, platform
+
+if platform.python_version().startswith('2.'):
+    from SimpleHTTPServer import * # python 2 code
+    from SocketServer import *
+else:
+    from http.server import HTTPServer, SimpleHTTPRequestHandler # python 3 code
+
+
 
 WEB_SERVER_PORT = random.randint(49152, 61000)
 
@@ -39,7 +45,10 @@ def main():
     broswerOpenerThread = BrowserOpener()
     broswerOpenerThread.start()
 
-    httpd = HTTPServer(('localhost', WEB_SERVER_PORT), ZombieDiceHandler)
+    if platform.python_version().startswith('2.'):
+        httpd = TCPServer(('localhost', WEB_SERVER_PORT), ZombieDiceHandler) # python 2 code
+    else:
+        httpd = HTTPServer(('localhost', WEB_SERVER_PORT), ZombieDiceHandler) # python 3 code
     try:
         httpd.serve_forever()
     except (KeyboardInterrupt, SystemExit):
@@ -105,13 +114,16 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
             # display the "Begin Tournament" button.
             self.output("""
                 <center>
-                Run <input type="text" size="4" id="numGamesToRun" value="1000"> simulated games.<br />
-                <input type="button" value="Begin Tournament" onclick="startTournament()" />
+                <form onsubmit="startTournament(); return false;" >
+                  Run <input type="text" size="4" id="numGamesToRun" value="1000"> simulated games.<br />
+                  <input type="submit" value="Begin Tournament" />
+                </form>
                 </center>
                 """)
         else:
             # display the current status of the tournament simulation that is in progress
             self.output("""
+                <!-- TOURNAMENT IN PROGRESS -->
                 <center style="font-size:1.5em;">
                 <span style="color: #00FF00">%s</span> / <span style="color: #FF0000">%s</span> Games Run</center>
                 Estimate Time Remaining: <span style="color: #FF0000">%s</span>
@@ -184,7 +196,7 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
             <body>
             <img src="imgZombieCheerleader.jpg" id="cheerleader" style="position: absolute; left: -90px; top: 10px; opacity: 0.0" />
             <img src="imgTitle.png" id="title" style="position: absolute; left: 100px; top: -10px; opacity: 0.0" />
-
+            <div style="position: absolute; left: 30px; top: 610px; font-size: 0.8em;"><center>By Al Sweigart <a href="http://inventwithpython.com">http://inventwithpython.com</a><br /><a href="http://www.amazon.com/gp/product/B003IKMR0U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B003IKMR0U&linkCode=as2&tag=playwithpyth-20">Buy Zombie Dice Online</a></center></div>
             <!-- The mainstatusDiv shows the "Begin Tournament" button, and then the number of games played along with estimated time remaining. -->
             <div id="mainstatusDiv" style="position: absolute; left: 310px; top: 120px; width: 550px; background-color: #EEEEEE; opacity: 0.0"></div>
 
@@ -220,6 +232,10 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
                     $('#mainstatusDiv').html(data);
                     if (data.indexOf('(Refresh page to run a new tournament.)') != -1 && ajaxIntervalID !== undefined) {
                         clearInterval(ajaxIntervalID);
+                    }
+                    if (data.indexOf('<!-- TOURNAMENT IN PROGRESS -->') != -1) {
+                        // if the page is being loaded while a tournament is already in progress, resume the repeated ajax status requests
+                        ajaxIntervalID = setInterval('updateMainStatus()', 100);
                     }
                   }
                 });
@@ -269,7 +285,7 @@ def estTimeRemaining(startTime, currentGame, totalGames):
     if currentGame == 0:
         return 'Unknown' # prevent zero division
     totalEstTime = lapsed * (totalGames / currentGame)
-    return prettyTime(round(totalEstTime - lapsed, 1))
+    return prettyTime(int(totalEstTime - lapsed))
 
 
 # Takes parameter that is a number of seconds and returns a pretty string with the time in weeks, days, hours, minutes, and seconds.
@@ -300,7 +316,7 @@ def prettyTime(t): # t is in seconds
         t_str.append('%s min' % (min))
     t_str.append('%s sec' % (sec))
 
-    return ' '.join(t_str)
+    return ' '.join(t_str[:2])
 
 
 # Runs the zombie dice tournament in a separate thread.
