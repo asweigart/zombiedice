@@ -212,7 +212,6 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
 
             <script>
             var ajaxIntervalID = undefined;
-            ajaxIntervalID = setInterval('updateMainStatus()', 250);
 
             window.setTimeout(function() {
                 // display the main divs part way through the other animations
@@ -253,6 +252,7 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
               $.ajax({
                 url: "start/" + $("#numGamesToRun").val()
               });
+              ajaxIntervalID = setInterval('updateMainStatus()', 250);
             }
 
             </script>
@@ -309,7 +309,7 @@ def prettyTime(t): # t is in seconds
         t_str.append('%s day' % (day))
     if wk > 0 or day > 0 or hr > 0:
         t_str.append('%s hr' % (hr))
-    if wk > 0 or day > 0 or hr > 0:
+    if wk > 0 or day > 0 or hr > 0 or min > 0:
         t_str.append('%s min' % (min))
     t_str.append('%s sec' % (sec))
 
