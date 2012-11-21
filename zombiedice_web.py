@@ -8,6 +8,7 @@
 import zombiedice
 
 # ======================================================================================
+# Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
 # Assign the bots in the tournament here by adding "ZombieBot" objects to the BOTS list:
 
 BOTS = [zombiedice.ZombieBot_MonteCarlo('MonteCarloBot', 40, 100),
@@ -123,7 +124,6 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
         else:
             # display the current status of the tournament simulation that is in progress
             self.output("""
-                <!-- TOURNAMENT IN PROGRESS -->
                 <center style="font-size:1.5em;">
                 <span style="color: #00FF00">%s</span> / <span style="color: #FF0000">%s</span> Games Run</center>
                 Estimate Time Remaining: <span style="color: #FF0000">%s</span>
@@ -141,10 +141,10 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
 
         if TOURNAMENT_RUNNING and TOTAL_NUM_GAMES is not None and START_TIME is not None and zombiedice.TOURNAMENT_STATE['gameNumber'] is not None:
             for zombieName in [bot.name for bot in BOTS]:
-                predictedMaxWidth = int(SCORE_BAR_MAX_WIDTH * max(int(len(BOTS) / 2), 1)) # We'll assume that the bots mostly evenly win games
+                predictedMaxWidth = int(SCORE_BAR_MAX_WIDTH * max(int(len(BOTS) / 2.0), 1)) # We'll assume that the bots mostly evenly win games
                 #predictedMaxWidth = SCORE_BAR_MAX_WIDTH # If the score bar keeps getting too long, just uncomment this line
 
-                scoreBarLength = int((zombiedice.TOURNAMENT_STATE['wins'][zombieName] / TOTAL_NUM_GAMES) * predictedMaxWidth)
+                scoreBarLength = int((zombiedice.TOURNAMENT_STATE['wins'][zombieName] / float(TOTAL_NUM_GAMES)) * predictedMaxWidth)
                 scoreBarColor = getScoreBarColor(zombieName, zombiedice.TOURNAMENT_STATE['wins'])
                 wins = zombiedice.TOURNAMENT_STATE['wins'][zombieName]
                 ties = zombiedice.TOURNAMENT_STATE['ties'][zombieName]
@@ -196,7 +196,7 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
             <body>
             <img src="imgZombieCheerleader.jpg" id="cheerleader" style="position: absolute; left: -90px; top: 10px; opacity: 0.0" />
             <img src="imgTitle.png" id="title" style="position: absolute; left: 100px; top: -10px; opacity: 0.0" />
-            <div style="position: absolute; left: 30px; top: 610px; font-size: 0.8em;"><center>By Al Sweigart <a href="http://inventwithpython.com">http://inventwithpython.com</a><br /><a href="http://www.amazon.com/gp/product/B003IKMR0U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B003IKMR0U&linkCode=as2&tag=playwithpyth-20">Buy Zombie Dice Online</a></center></div>
+            <div style="position: absolute; left: 30px; top: 610px; font-size: 0.8em;"><center>By Al Sweigart <a href="http://inventwithpython.com">http://inventwithpython.com</a><br /><a href="http://www.amazon.com/gp/product/B003IKMR0U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B003IKMR0U&linkCode=as2&tag=playwithpyth-20">Buy Zombie Dice Online</a><br /><a href="http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice">Programming your own Zombie Dice bot.</a></center></div>
             <!-- The mainstatusDiv shows the "Begin Tournament" button, and then the number of games played along with estimated time remaining. -->
             <div id="mainstatusDiv" style="position: absolute; left: 310px; top: 120px; width: 550px; background-color: #EEEEEE; opacity: 0.0"></div>
 
@@ -212,6 +212,7 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
 
             <script>
             var ajaxIntervalID = undefined;
+            ajaxIntervalID = setInterval('updateMainStatus()', 250);
 
             window.setTimeout(function() {
                 // display the main divs part way through the other animations
@@ -225,6 +226,7 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
 
 
             function updateMainStatus() {
+                //console.log((new Date).getTime() / 1000);
                 <!-- This ajax request contains the html for the mainstatusDiv -->
                 $.ajax({
                   url: "mainstatus",
@@ -232,10 +234,6 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
                     $('#mainstatusDiv').html(data);
                     if (data.indexOf('(Refresh page to run a new tournament.)') != -1 && ajaxIntervalID !== undefined) {
                         clearInterval(ajaxIntervalID);
-                    }
-                    if (data.indexOf('<!-- TOURNAMENT IN PROGRESS -->') != -1) {
-                        // if the page is being loaded while a tournament is already in progress, resume the repeated ajax status requests
-                        ajaxIntervalID = setInterval('updateMainStatus()', 100);
                     }
                   }
                 });
@@ -255,7 +253,6 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
               $.ajax({
                 url: "start/" + $("#numGamesToRun").val()
               });
-              ajaxIntervalID = setInterval('updateMainStatus()', 100);
             }
 
             </script>
@@ -284,7 +281,7 @@ def estTimeRemaining(startTime, currentGame, totalGames):
     lapsed = time.time() - startTime
     if currentGame == 0:
         return 'Unknown' # prevent zero division
-    totalEstTime = lapsed * (totalGames / currentGame)
+    totalEstTime = lapsed * (totalGames / float(currentGame))
     return prettyTime(int(totalEstTime - lapsed))
 
 
