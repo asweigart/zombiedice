@@ -327,7 +327,7 @@ class ZombieBot_MinNumShotgunsThenStops(object):
 
 
 class ZombieBot_HumanPlayer(object):
-    """This "bot" actually calls input() and print() to let a human player play Zombie Dice against the other bots."""
+    """This "bot" actually calls raw_input() and print() to let a human player play Zombie Dice against the other bots."""
     def __init__(self, name, profileImageFile=None):
         self.name = name
         self.profileImageFile = profileImageFile
@@ -352,12 +352,12 @@ class ZombieBot_HumanPlayer(object):
             print('Brains  : %s\t\tShotguns: %s' % (brains, shotguns))
             if len(shotguns) < 3:
                 print('Press Enter to roll again, or enter "S" to stop.')
-                response = input()
+                response = raw_input()
                 if response.upper().startswith('S'):
                     return
             else:
                 print('Shotgunned! Press Enter to continue.')
-                input()
+                raw_input()
                 return
 
 
