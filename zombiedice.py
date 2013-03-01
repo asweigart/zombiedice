@@ -33,7 +33,7 @@ Note: We don't use OOP for bots. A "zombie dice bot" simply implements a turn() 
 Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
 """
 
-import logging, random, sys, copy
+import logging, random, sys, copy, platform
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.debug('Start of the Zombie Dice program.')
 
