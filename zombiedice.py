@@ -1,24 +1,4 @@
 """
-
-.,:,:::~::::...................,,...................................................................
-.ID=.......8MM,...............,M.:..................................................................
-.+M?.......M,M,.N,............M..M...........,......................................................
-.,MM.........M,M,,MN,.MMMO...:M..7..........M,M7........:......,MMMN..DM............................
-.~M.........D$M.~....MM...M..M.=.Z..,,~8N~..M..M....$MM.MM.....M........M....... ............MMM....
-.,~8:~ZMM..,MM:......$M,,.M..M...M.MD.....M:M..MMMN..DMNM......M........?N.ZZM, .=MM,...8MMO.~NM....
-,.....,M,..MM8:...M~.MM8..I.I8I..MM........MM..MM...~MM.......~8...MMM8..M.M.,D.M,...MMN...,,M,.....
-......M+.7M:MM...M.D..MM...7M.~:.M.M.:M~...MM.,MM.M~..,.... ..Z+..MZ..O=.M.M.,NM....:O8M..M8.... ...
-.....OD.M=.N:M.,,MMM.,MM...MM..8.M,M......8+8.:NM.MMZ...M.....N:..M....M.M.M.+M...MM?ND.8,MMM$MM....
-....I,.M...M7M..M,,M.:MM...M8?MM.M,M.I....N=,.O+M....DM.......O=..=...$=.,D8.8M..M......?.,..M?... .
-..,8M.M,...M.M,.M,N,.IMM...,..MM.M,M..?ZM..M..MM..NMMMMN.=MM..Z?... ..M.~,D~.MM.,NMM.MMM..MMMM~.~MN.
-.,M~..$MM:.~NMN..MM..MMD..$.+,MM.Z?M..MM..,M..M,M.D....MN.MM..=D.,..NM..:MM..MM,..~$M..M.,8...MN.M$.
-.D=......:M~MIM......MM8.?M..M,M..MM.DM..ZM~..M8M......MM~.....M.,M7....,MM..MM..8MM=.MM......NM:...
-+M....:....M:?M.....I8M=.MM.DM.M..MM.D.,M..~..MMN8M.MM=........M........M.M..MM.M..7M+.M..M?M7......
-M?.,.......O..,M...MM.N:?MD.M,.M..MM..M,...,..M.M:$............M.......M..M..N.MM8D~. ..MM.... .....
-.8M...MNM.M.....MM+...?$MM.M:...MZ?.MI......?M,...............7?...,MMM,..II,:  ....................
-..~MM?..,MZ,...........MM.......MM..........MM.................M.DM........M?.......................
-.......................+M.......................................MM..................................
-
 Zombie Dice is by Steve Jackson Games
 http://zombiedice.sjgames.com/
 
@@ -28,10 +8,16 @@ Zombie Dice simulator by Al Sweigart (al@inventwithpython.com)
 
 Note: A "turn" is a single player's turn. A "round" is every player having one turn.
 Note: Since all variables are public in Python, it is trivial to have a bot that hacks the tournament code. Inspect the bot code before running it.
-Note: We don't use OOP for bots. A "zombie dice bot" simply implements a turn() method which calls a global roll() function as often as it likes. See documentation for details.
 
 Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
 """
+
+
+VERBOSE = False # if True, program outputs the actions that happen during the game
+EXCEPTIONS_LOSE_GAME = False  # if True, errors in bot code won't stop the tournament code but instead result in the bot losing that game. Leave on False for debugging.
+
+
+
 
 import logging, random, sys, copy, platform
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -48,8 +34,6 @@ BRAINS = 'brains'
 FOOTSTEPS = 'footsteps'
 SCORES = 'scores'
 
-VERBOSE = False # if True, program outputs the actions that happen during the game
-
 TOURNAMENT_STATE = None
 
 def main():
@@ -58,7 +42,7 @@ def main():
             ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2),
             ZombieBot_RandomCoinFlip('RandomBot'),
             ]
-    runTournament(bots, 1000)
+    runTournament(bots, 100)
 
 
 def runGame(zombies):
@@ -100,11 +84,14 @@ def runGame(zombies):
     lastRound = False # True when a player has reached 13 brains
     tieBreakingRound = False # True when the "last round" ended in a tie
     zombiesInPlay = copy.copy(zombies) # all zombies play
+    crashedBots = [] # list of bots that had exceptions
     while True: # game loop
         gameState['round'] += 1
         logging.debug('ROUND #%s, scores: %s' % (gameState['round'], gameState[SCORES]))
         if VERBOSE: print('Round #%s' % (gameState['round']))
         for zombie in zombiesInPlay:
+            if zombie in crashedBots:
+                continue
             CURRENT_ZOMBIE = zombie.name
             logging.debug('NEW TURN: %s' % (CURRENT_ZOMBIE))
             if VERBOSE: print("%s's turn." % (CURRENT_ZOMBIE))
@@ -118,7 +105,16 @@ def runGame(zombies):
             ROLLED_BRAINS = [] # list of dice colors, in case of "ran out of dice"
 
             # run the turn (don't pass the original gameState)
-            zombie.turn(copy.deepcopy(gameState))
+            try:
+                zombie.turn(copy.deepcopy(gameState))
+            except Exception:
+                crashedBots.append(zombie)
+                if EXCEPTIONS_LOSE_GAME:
+                    gameState[SCORES][zombie.name] = -1
+                    if VERBOSE:
+                        print('%s has lost the game due to a raised exception.' % (CURRENT_ZOMBIE))
+                else:
+                    raise # crash the tournament program
             if VERBOSE and NUM_SHOTGUNS_ROLLED < 3: print('%s stops.' % (CURRENT_ZOMBIE))
             if VERBOSE and NUM_SHOTGUNS_ROLLED >= 3: print('%s is shotgunned.' % (CURRENT_ZOMBIE))
 
@@ -325,6 +321,22 @@ class ZombieBot_MinNumShotgunsThenStops(object):
                 if i[ICON] == SHOTGUN:
                     shotguns += 1
 
+class ZombieBot_MinNumShotgunsThenStopsOneMore(object):
+    """This bot keeps rolling until it has rolled a minimum number of shotguns, then it rolls one more time."""
+    def __init__(self, name, minShotguns=2):
+        self.name = name
+        self.minShotguns = minShotguns
+
+    def turn(self, gameState):
+        shotguns = 0 # number of shotguns rolled this turn
+        while shotguns < self.minShotguns:
+            results = roll()
+            if results == []:
+                return
+            for i in results:
+                if i[ICON] == SHOTGUN:
+                    shotguns += 1
+        roll()
 
 class ZombieBot_HumanPlayer(object):
     """This "bot" actually calls input() and print() to let a human player play Zombie Dice against the other bots."""

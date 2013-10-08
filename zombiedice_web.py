@@ -18,6 +18,7 @@ BOTS = [zombiedice.ZombieBot_MonteCarlo('MonteCarloBot', 40, 100),
         #zombiedice.ZombieBot_HumanPlayer('Human'), # uncomment if you want to play (learn the rules to Zombie Dice first though)
         zombiedice.ZombieBot_RollsUntilInTheLead('RollsUntilInTheLeadBot'),
         zombiedice.ZombieBot_RandomCoinFlip('RandomBot'),
+        zombiedice.ZombieBot_MinNumShotgunsThenStopsOneMore('OneMoreBot', 2),
         ]
 # ======================================================================================
 
