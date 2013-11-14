@@ -15,7 +15,7 @@ Instructions for making your own bot can be found here: http://inventwithpython.
 
 VERBOSE = False # if True, program outputs the actions that happen during the game
 EXCEPTIONS_LOSE_GAME = False  # if True, errors in bot code won't stop the tournament code but instead result in the bot losing that game. Leave on False for debugging.
-
+MAX_TURN_TIME = None # number of seconds bot can take per turn. Violating this results in the bot losing the game.
 
 
 
@@ -36,23 +36,30 @@ SCORES = 'scores'
 
 TOURNAMENT_STATE = None
 
+CURRENT_GAME_STATE = { # Just so that this dict is shareable for user's bot code, don't reassign this variable ever. (Poor design, but it's made for implementation simplicity for newbie programmers.)
+    'CURRENT_ZOMBIE': None, # string of the zombie whose turn it is currently
+    'CURRENT_CUP': None, # list of dice strings (i.e. 'red', 'yellow', 'green')
+    'CURRENT_HAND': None, # list of dice being rolled (should always be length of three)
+    'NUM_SHOTGUNS_ROLLED': None, # number of shotguns rolled this turn
+    'NUM_BRAINS_ROLLED': None, # number of brains rolled this turn
+    'ROLLED_BRAINS': None, # list of dice strings for each brain rolled, used in the rare event we run out of brain dice
+}
+
+
 def main():
+    import zombieBotExamples
+
     # pass runTournament() a list of bot objects
-    bots = [ZombieBot_MonteCarlo('MonteCarlo', 40, 100),
-            ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2),
-            ZombieBot_RandomCoinFlip('RandomBot'),
+    bots = [zombieBotExamples.MonteCarloZombie('MonteCarlo', 40, 100),
+            zombieBotExamples.MinNumShotgunsThenStopsZombie('Min2ShotgunsBot', 2),
+            zombieBotExamples.RandomCoinFlipZombie('RandomBot'),
             ]
     runTournament(bots, 100)
 
 
 def runGame(zombies):
     """Runs a single game of zombie dice. zombies is a list of zombie dice bot objects."""
-    global CURRENT_ZOMBIE # string of the zombie whose turn it is currently
-    global CURRENT_CUP # list of dice strings (i.e. 'red', 'yellow', 'green')
-    global CURRENT_HAND # list of dice being rolled (should always be three)
-    global NUM_SHOTGUNS_ROLLED # number of shotguns rolled this turn
-    global NUM_BRAINS_ROLLED # number of brains rolled this turn
-    global ROLLED_BRAINS # list of dice strings for each brain rolled, used in the rare event we run out of brain dice
+    global CURRENT_GAME_STATE
 
     # create a new game state object
     playerScores = dict([(zombie.name, 0) for zombie in zombies])
@@ -92,35 +99,37 @@ def runGame(zombies):
         for zombie in zombiesInPlay:
             if zombie in crashedBots:
                 continue
-            CURRENT_ZOMBIE = zombie.name
-            logging.debug('NEW TURN: %s' % (CURRENT_ZOMBIE))
-            if VERBOSE: print("%s's turn." % (CURRENT_ZOMBIE))
+            CURRENT_GAME_STATE['CURRENT_ZOMBIE'] = zombie.name
+            logging.debug('NEW TURN: %s' % (CURRENT_GAME_STATE['CURRENT_ZOMBIE']))
+            if VERBOSE: print("%s's turn." % (CURRENT_GAME_STATE['CURRENT_ZOMBIE']))
 
             # set up for a new turn
-            CURRENT_CUP = [RED] * 3 + [YELLOW] * 4 + [GREEN] * 6
-            random.shuffle(CURRENT_CUP)
-            CURRENT_HAND = []
-            NUM_SHOTGUNS_ROLLED = 0
-            NUM_BRAINS_ROLLED = 0
-            ROLLED_BRAINS = [] # list of dice colors, in case of "ran out of dice"
+            CURRENT_GAME_STATE['CURRENT_CUP'] = [RED] * 3 + [YELLOW] * 4 + [GREEN] * 6
+            random.shuffle(CURRENT_GAME_STATE['CURRENT_CUP'])
+            CURRENT_GAME_STATE['CURRENT_HAND'] = []
+            CURRENT_GAME_STATE['NUM_SHOTGUNS_ROLLED'] = 0
+            CURRENT_GAME_STATE['NUM_BRAINS_ROLLED'] = 0
+            CURRENT_GAME_STATE['ROLLED_BRAINS'] = [] # list of dice colors, in case of "ran out of dice"
 
-            # run the turn (don't pass the original gameState)
+            # run the turn
             try:
-                zombie.turn(copy.deepcopy(gameState))
+                zombie.turn(copy.deepcopy(gameState)) # (don't pass the original gameState)
             except Exception:
                 crashedBots.append(zombie)
                 if EXCEPTIONS_LOSE_GAME:
+                    # if the bot code has an unhandled exception, it
+                    # automatically loses this game
                     gameState[SCORES][zombie.name] = -1
                     if VERBOSE:
-                        print('%s has lost the game due to a raised exception.' % (CURRENT_ZOMBIE))
+                        print('%s has lost the game due to a raised exception.' % (CURRENT_GAME_STATE['CURRENT_ZOMBIE']))
                 else:
-                    raise # crash the tournament program
-            if VERBOSE and NUM_SHOTGUNS_ROLLED < 3: print('%s stops.' % (CURRENT_ZOMBIE))
-            if VERBOSE and NUM_SHOTGUNS_ROLLED >= 3: print('%s is shotgunned.' % (CURRENT_ZOMBIE))
+                    raise # crash the tournament program (good for debugging)
+            if VERBOSE and CURRENT_GAME_STATE['NUM_SHOTGUNS_ROLLED'] < 3: print('%s stops.' % (CURRENT_GAME_STATE['CURRENT_ZOMBIE']))
+            if VERBOSE and CURRENT_GAME_STATE['NUM_SHOTGUNS_ROLLED'] >= 3: print('%s is shotgunned. Lose all brains.' % (CURRENT_GAME_STATE['CURRENT_ZOMBIE']))
 
             # add brains to the score
-            if NUM_SHOTGUNS_ROLLED < 3:
-                gameState[SCORES][zombie.name] += NUM_BRAINS_ROLLED
+            if CURRENT_GAME_STATE['NUM_SHOTGUNS_ROLLED'] < 3:
+                gameState[SCORES][zombie.name] += CURRENT_GAME_STATE['NUM_BRAINS_ROLLED']
 
             if gameState[SCORES][zombie.name] >= 13:
                 # once a player reaches 13 brains, it becomes the last round
@@ -213,52 +222,52 @@ def runTournament(zombies, numGames):
 def roll():
     """This global function is called by a zombie bot object to indicate that they wish to roll the dice.
     The state of the game and previous rolls are held in global variables."""
-    global CURRENT_ZOMBIE, CURRENT_CUP, CURRENT_HAND, NUM_SHOTGUNS_ROLLED, NUM_BRAINS_ROLLED, ROLLED_BRAINS
+    global CURRENT_GAME_STATE
 
     # make sure zombie can actually roll
-    if NUM_SHOTGUNS_ROLLED >= 3:
+    if CURRENT_GAME_STATE['NUM_SHOTGUNS_ROLLED'] >= 3:
         return []
 
-    logging.debug(CURRENT_ZOMBIE + ' rolls. (brains: %s, shotguns: %s)' % (NUM_BRAINS_ROLLED, NUM_SHOTGUNS_ROLLED))
-    if VERBOSE: print('%s rolls. (brains: %s, shotguns: %s)' % (CURRENT_ZOMBIE, NUM_BRAINS_ROLLED, NUM_SHOTGUNS_ROLLED))
+    logging.debug(CURRENT_GAME_STATE['CURRENT_ZOMBIE'] + ' rolls. (brains: %s, shotguns: %s)' % (CURRENT_GAME_STATE['NUM_BRAINS_ROLLED'], CURRENT_GAME_STATE['NUM_SHOTGUNS_ROLLED']))
+    if VERBOSE: print('%s rolls. (brains: %s, shotguns: %s)' % (CURRENT_GAME_STATE['CURRENT_ZOMBIE'], CURRENT_GAME_STATE['NUM_BRAINS_ROLLED'], CURRENT_GAME_STATE['NUM_SHOTGUNS_ROLLED']))
 
     # "ran out of dice", so put the rolled brains back into the cup
-    if 3 - len(CURRENT_HAND) > len(CURRENT_CUP):
+    if 3 - len(CURRENT_GAME_STATE['CURRENT_HAND']) > len(CURRENT_GAME_STATE['CURRENT_CUP']):
         logging.debug('Out of dice! Putting rolled brains back into cup.')
-        CURRENT_CUP.extend(ROLLED_BRAINS)
-        ROLLED_BRAINS = []
+        CURRENT_GAME_STATE['CURRENT_CUP'].extend(CURRENT_GAME_STATE['ROLLED_BRAINS'])
+        CURRENT_GAME_STATE['ROLLED_BRAINS'] = []
 
     # add new dice to hand from cup until there are 3 dice in the hand
-    while len(CURRENT_HAND) < 3:
-        newDie = random.choice(CURRENT_CUP)
+    while len(CURRENT_GAME_STATE['CURRENT_HAND']) < 3:
+        newDie = random.choice(CURRENT_GAME_STATE['CURRENT_CUP'])
         logging.debug('%s die added to hand from cup.' % (newDie))
-        CURRENT_CUP.remove(newDie)
-        CURRENT_HAND.append(newDie)
+        CURRENT_GAME_STATE['CURRENT_CUP'].remove(newDie)
+        CURRENT_GAME_STATE['CURRENT_HAND'].append(newDie)
 
     # roll the dice
-    logging.debug('Hand is %s' % (', '.join(CURRENT_HAND)))
-    logging.debug('Cup has %s: %s' % (len(CURRENT_CUP), ', '.join(CURRENT_CUP)))
+    logging.debug('Hand is %s' % (', '.join(CURRENT_GAME_STATE['CURRENT_HAND'])))
+    logging.debug('Cup has %s: %s' % (len(CURRENT_GAME_STATE['CURRENT_CUP']), ', '.join(CURRENT_GAME_STATE['CURRENT_CUP'])))
     results = []
-    for die in CURRENT_HAND:
+    for die in CURRENT_GAME_STATE['CURRENT_HAND']:
         results.append(rollDie(die))
     resultStr = ['%s_%s' % (result[COLOR][0].upper(), result[ICON][:2]) for result in results]
-    logging.debug('%s rolled %s' % (CURRENT_ZOMBIE, ', '.join(resultStr)))
+    logging.debug('%s rolled %s' % (CURRENT_GAME_STATE['CURRENT_ZOMBIE'], ', '.join(resultStr)))
     if VERBOSE: print(', '.join(['%s %s' % (result[COLOR].title(), result[ICON]) for result in results]))
 
     # count the shotguns and remove them from the hand
     for result in results:
         if result[ICON] == SHOTGUN:
-            NUM_SHOTGUNS_ROLLED += 1
+            CURRENT_GAME_STATE['NUM_SHOTGUNS_ROLLED'] += 1
             logging.debug('Removing ' + result[COLOR] + ' from hand for shotgun.')
-            CURRENT_HAND.remove(result[COLOR])
+            CURRENT_GAME_STATE['CURRENT_HAND'].remove(result[COLOR])
 
     # count the brains and remove them from the hand
     for result in results:
         if result[ICON] == BRAINS:
-            ROLLED_BRAINS.append(result[COLOR])
-            NUM_BRAINS_ROLLED += 1
+            CURRENT_GAME_STATE['ROLLED_BRAINS'].append(result[COLOR])
+            CURRENT_GAME_STATE['NUM_BRAINS_ROLLED'] += 1
             logging.debug('Removing ' + result[COLOR] + ' from hand for brains.')
-            CURRENT_HAND.remove(result[COLOR])
+            CURRENT_GAME_STATE['CURRENT_HAND'].remove(result[COLOR])
 
     return results
 
@@ -293,178 +302,6 @@ def rollDie(die):
 
 
 
-class ZombieBot_RandomCoinFlip(object):
-    """After the first roll, this bot always has a fifty-fifty chance of deciding to roll again or stopping."""
-    def __init__(self, name):
-        self.name = name
-
-    def turn(self, gameState):
-        results = roll() # first roll
-
-        while results and random.randint(0, 1) == 0:
-            results = roll()
-
-
-class ZombieBot_MinNumShotgunsThenStops(object):
-    """This bot keeps rolling until it has rolled a minimum number of shotguns."""
-    def __init__(self, name, minShotguns=2):
-        self.name = name
-        self.minShotguns = minShotguns
-
-    def turn(self, gameState):
-        shotguns = 0 # number of shotguns rolled this turn
-        while shotguns < self.minShotguns:
-            results = roll()
-            if results == []:
-                return
-            for i in results:
-                if i[ICON] == SHOTGUN:
-                    shotguns += 1
-
-class ZombieBot_MinNumShotgunsThenStopsOneMore(object):
-    """This bot keeps rolling until it has rolled a minimum number of shotguns, then it rolls one more time."""
-    def __init__(self, name, minShotguns=2):
-        self.name = name
-        self.minShotguns = minShotguns
-
-    def turn(self, gameState):
-        shotguns = 0 # number of shotguns rolled this turn
-        while shotguns < self.minShotguns:
-            results = roll()
-            if results == []:
-                return
-            for i in results:
-                if i[ICON] == SHOTGUN:
-                    shotguns += 1
-        roll()
-
-class ZombieBot_HumanPlayer(object):
-    """This "bot" actually calls input() and print() to let a human player play Zombie Dice against the other bots."""
-    def __init__(self, name):
-        self.name = name
-
-    def turn(self, gameState):
-        brains = '' # number of brains rolled this turn
-        shotguns = '' # number of shotguns rolled this turn
-        print('Scores:')
-        for zombieName, zombieScore in gameState[SCORES].items():
-            print('\t%s - %s' % (zombieScore, zombieName))
-        print()
-
-        while True:
-            results = roll()
-            brains   += ''.join([x[COLOR][0].upper() for x in results if x[ICON] == BRAINS])
-            shotguns += ''.join([x[COLOR][0].upper() for x in results if x[ICON] == SHOTGUN])
-
-            print('Roll:')
-            for i in range(3):
-                print(results[i][COLOR], '\t', results[i][ICON])
-            print()
-            print('Brains  : %s\t\tShotguns: %s' % (brains, shotguns))
-            if len(shotguns) < 3:
-                print('Press Enter to roll again, or enter "S" to stop.')
-                if platform.python_version().startswith('2.'):
-                    response = raw_input() # python 2 code
-                else:
-                    response = input() # python 3 code
-                if response.upper().startswith('S'):
-                    return
-            else:
-                print('Shotgunned! Press Enter to continue.')
-                if platform.python_version().startswith('2.'):
-                    raw_input() # python 2 code
-                else:
-                    input() # python 3 code
-                return
-
-
-class ZombieBot_RollsUntilInTheLead(object):
-    """This bot's strategy is to keep rolling for brains until they are in the lead (plus an optional number of points). This is a high risk strategy, because if the opponent gets an early lead then this bot will take greater and greater risks to get in the lead in a single turn.
-
-    However, once in the lead, this bot will just use Zombie_MinNumShotgunsThenStops's strategy."""
-    def __init__(self, name, plusLead=0):
-        self.name = name
-        self.plusLead = plusLead
-        self.altZombieStrategy = ZombieBot_MinNumShotgunsThenStops(name + '_alt', 2)
-
-    def turn(self, gameState):
-        highestScoreThatIsntMine = max([zombieScore for zombieName, zombieScore in gameState[SCORES].items() if zombieName != CURRENT_ZOMBIE])
-
-        if highestScoreThatIsntMine + self.plusLead >= gameState[SCORES][CURRENT_ZOMBIE]:
-            results = roll() # roll at least once
-            brains = len([True for result in results if result[ICON] == BRAINS])
-            myScore = gameState[SCORES][CURRENT_ZOMBIE]
-
-            while results != [] and myScore + brains <= highestScoreThatIsntMine + self.plusLead:
-                results = roll()
-                brains += len([True for result in results if result[ICON] == BRAINS])
-        else:
-            # already in the lead, so just use altZombieStrategy's turn()
-            self.altZombieStrategy.turn(gameState)
-
-
-class ZombieBot_MonteCarlo(object):
-    """This bot does several experimental dice rolls with the current cup, and re-rolls if the chance of 3 shotguns is less than "riskiness".
-    The bot doesn't care how many brains it has rolled or what the relative scores are, it just looks at the chance of death for the next roll given the current cup."""
-    def __init__(self, name, riskiness=50, numExperiments=100):
-        self.name = name
-        self.riskiness = riskiness
-        self.numExperiments = numExperiments
-
-    def turn(self, gameState):
-        results = roll() # always do a first roll
-        shotguns = len([True for i in results if i[ICON] == SHOTGUN]) # count shotguns from first roll
-
-        if shotguns == 3:
-            return # early exit if we rolled three shotguns on the first roll
-
-        while True:
-            # run experiments
-            deaths = 0
-            for i in range(self.numExperiments):
-                if shotguns + self.simulatedRollShotguns() >= 3:
-                    deaths += 1
-
-            # roll if percentage of deaths < riskiness%
-            if deaths / float(self.numExperiments) * 100 < self.riskiness:
-                results = roll() # this will update the CURRENT_CUP and ROLLED_BRAINS globals that simulatedRollShotguns() uses.
-                shotguns += len([True for i in results if i[ICON] == SHOTGUN])
-                if shotguns >= 3:
-                    return
-            else:
-                return
-
-    def simulatedRollShotguns(self):
-        """Calculates the number of shotguns rolled with the current cup and rolled brains. (Rolled brains is only used in the rare case that we run out of dice.)"""
-        shotguns = 0
-        cup = copy.copy(CURRENT_CUP)
-        rolledBrains = copy.copy(ROLLED_BRAINS)
-
-        # "ran out of dice", so put the rolled brains back into the cup
-        if len(cup) < 3:
-            cup.extend(rolledBrains)
-            rolledBrains = []
-
-        # add new dice to hand from cup until there are 3 dice in the hand
-        hand = []
-        for i in range(3):
-            newDie = random.choice(cup)
-            logging.debug('%s die added to hand from cup.' % (newDie))
-            cup.remove(newDie)
-            hand.append(newDie)
-
-        # roll the dice
-        results = []
-        for die in hand:
-            results.append(rollDie(die))
-
-        # count the shotguns and remove them from the hand
-        for result in results:
-            if result[ICON] == SHOTGUN:
-                shotguns += 1
-                hand.remove(result[COLOR])
-
-        return shotguns
 
 
 

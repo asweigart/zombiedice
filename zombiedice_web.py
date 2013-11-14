@@ -2,23 +2,21 @@
 # By Al Sweigart al@inventwithpython.com
 # Zombie Cheerleader photo by Gianluca Ramalho Misiti https://secure.flickr.com/photos/grmisiti/8149582049/
 
-
-# oh god this code is messy.
-
 import zombiedice
+import zombieBotExamples
 
 # ======================================================================================
 # Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
-# Assign the bots in the tournament here by adding "ZombieBot" objects to the BOTS list:
+# Assign the bots in the tournament here by adding zombie objects to the BOTS list:
 
-BOTS = [zombiedice.ZombieBot_MonteCarlo('MonteCarloBot', 40, 100),
-        zombiedice.ZombieBot_MonteCarlo('FastMonteCarloBot', 40, 20), # executes faster because it runs fewer experimental rolls
-        zombiedice.ZombieBot_MinNumShotgunsThenStops('Min2ShotgunsBot', 2),
-        zombiedice.ZombieBot_MinNumShotgunsThenStops('Min1ShotgunBot', 1),
-        #zombiedice.ZombieBot_HumanPlayer('Human'), # uncomment if you want to play (learn the rules to Zombie Dice first though)
-        zombiedice.ZombieBot_RollsUntilInTheLead('RollsUntilInTheLeadBot'),
-        zombiedice.ZombieBot_RandomCoinFlip('RandomBot'),
-        zombiedice.ZombieBot_MinNumShotgunsThenStopsOneMore('OneMoreBot', 2),
+BOTS = [zombieBotExamples.MonteCarloZombie('MonteCarloBot', 40, 100),
+        zombieBotExamples.MonteCarloZombie('FastMonteCarloBot', 40, 20), # executes faster because it runs fewer experimental rolls
+        zombieBotExamples.MinNumShotgunsThenStopsZombie('Min2ShotgunsBot', 2),
+        zombieBotExamples.MinNumShotgunsThenStopsZombie('Min1ShotgunBot', 1),
+        #zombieBotExamples.HumanPlayerZombie('Human'), # uncomment if you want to play (learn the rules to Zombie Dice first though)
+        zombieBotExamples.RollsUntilInTheLeadZombie('RollsUntilInTheLeadBot'),
+        zombieBotExamples.RandomCoinFlipZombie('RandomBot'),
+        zombieBotExamples.MinNumShotgunsThenStopsOneMoreZombie('OneMoreBot', 2),
         ]
 # ======================================================================================
 
