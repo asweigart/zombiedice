@@ -1,9 +1,8 @@
 # Zombie Dice simulator by Al Sweigart (al@inventwithpython.com)
 # Open BSD license
 
-# Note: Don't ever reassign the CURRENT_GAME_STATE variable directly, or it won't be updated by the tournament code.
-
-from zombiedice import *
+# This file will be loaded by the tournament code into its own scope.
+# Consider the roll() function to exist in this global scope.
 
 class RandomCoinFlipZombie(object):
     """After the first roll, this bot always has a fifty-fifty chance of deciding to roll again or stopping."""
@@ -61,7 +60,7 @@ class HumanPlayerZombie(object):
         brains = '' # number of brains rolled this turn
         shotguns = '' # number of shotguns rolled this turn
         print('Scores:')
-        for zombieName, zombieScore in gameState[SCORES].items():
+        for zombieName, zombieScore in gameState['SCORES'].items():
             print('\t%s - %s' % (zombieScore, zombieName))
         print()
 
@@ -102,13 +101,13 @@ class RollsUntilInTheLeadZombie(object):
         self.altZombieStrategy = MinNumShotgunsThenStopsZombie(name + '_alt', 2)
 
     def turn(self, gameState):
-        thisZombie = CURRENT_GAME_STATE['CURRENT_ZOMBIE']
-        highestScoreThatIsntMine = max([zombieScore for zombieName, zombieScore in gameState[SCORES].items() if zombieName != thisZombie])
+        thisZombie = gameState['CURRENT_ZOMBIE']
+        highestScoreThatIsntMine = max([zombieScore for zombieName, zombieScore in gameState['SCORES'].items() if zombieName != thisZombie])
 
-        if highestScoreThatIsntMine + self.plusLead >= gameState[SCORES][thisZombie]:
+        if highestScoreThatIsntMine + self.plusLead >= gameState['SCORES'][thisZombie]:
             results = roll() # roll at least once
             brains = len([True for result in results if result[ICON] == BRAINS])
-            myScore = gameState[SCORES][thisZombie]
+            myScore = gameState['SCORES'][thisZombie]
 
             while results != [] and myScore + brains <= highestScoreThatIsntMine + self.plusLead:
                 results = roll()
@@ -137,23 +136,23 @@ class MonteCarloZombie(object):
             # run experiments
             deaths = 0
             for i in range(self.numExperiments):
-                if shotguns + self.simulatedRollShotguns() >= 3:
+                if shotguns + self.simulatedRollShotguns(copy.deepcopy(gameState)) >= 3:
                     deaths += 1
 
             # roll if percentage of deaths < riskiness%
             if deaths / float(self.numExperiments) * 100 < self.riskiness:
-                results = roll() # this will update the CURRENT_CUP and ROLLED_BRAINS globals that simulatedRollShotguns() uses.
+                results = roll() # this will update the CURRENT_CUP and ROLLED_BRAINS_DETAILS globals that simulatedRollShotguns() uses.
                 shotguns += len([True for i in results if i[ICON] == SHOTGUN])
                 if shotguns >= 3:
                     return
             else:
                 return
 
-    def simulatedRollShotguns(self):
+    def simulatedRollShotguns(self, gameState):
         """Calculates the number of shotguns rolled with the current cup and rolled brains. (Rolled brains is only used in the rare case that we run out of dice.)"""
         shotguns = 0
-        cup = copy.copy(CURRENT_GAME_STATE['CURRENT_CUP'])
-        rolledBrains = copy.copy(CURRENT_GAME_STATE['ROLLED_BRAINS'])
+        cup = gameState['CURRENT_CUP']
+        rolledBrains = gameState['ROLLED_BRAINS_DETAILS']
 
         # "ran out of dice", so put the rolled brains back into the cup
         if len(cup) < 3:
@@ -180,3 +179,23 @@ class MonteCarloZombie(object):
                 hand.remove(result[COLOR])
 
         return shotguns
+
+
+class CrashZombie(object):
+    """This bot simply crashes. This tests the exception-handling code in the tournament program."""
+    def __init__(self, name):
+        self.name = name
+
+    def turn(self, gameState):
+        42 / 0 # divide-by-zero roll
+
+
+class SlowZombie(object):
+    """This zombie simply takes too long. This tests the MAX_TURN_TIME code in the tournament program."""
+    def __init__(self, name):
+        self.name = name
+
+    def turn(self, gameState):
+        import time
+        time.sleep(2)
+        roll() # just rolls once
