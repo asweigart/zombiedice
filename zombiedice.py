@@ -6,14 +6,30 @@ Zombie Dice simulator by Al Sweigart (al@inventwithpython.com)
 (I'm not affiliated with SJ Games. This is a hobby project.)
 
 ==== TOURNAMENT SETUP INSTRUCTIONS =============================================
-In the main() function, enter the .py file that contains your zombie bots in the
-exec() call.
+To run the web gui for this simulator, run "python zombiedice.py config.py"
 
-Then adjust the "bots" list to create Zombie Bot objects in it.
+The config file can have any name. It defines global variables:
+  games - integer, the number of games to simulate
+  ui - string, either "web" for web interface or "cli" for command line interface
+  bots - a list of lists. Each inner list represents a bot, and has values:
+    filename - string, the python file where the bot code is
+    class name - string, the name of the class
+    bot name - string, the name of the bot instance
+    args - arguments passed to the bot's constructor
 
-Then call runTournament(), passing the numbr of games the tournament should play.
+Additionally, the config file can have these variables:
+  verbose - boolean, if True, output game info to stdout
+  exceptions_lose_game - boolean, if True, an exception in the bot code causes the bot to forfeit the current game. If False, an exception crashes the tournament program.
+  max_turn_time - if None, there is no time limit for a bot's turn. Otherwise, the number of seconds the bot has per turn before forfeiting the current game.
 
-To run the web gui for this simulator, run "python zombiedice.py web"
+Example config.py file:
+games = 100
+ui = 'web'
+bots = [
+    ['zombieBotExamples.py', 'RandomCoinFlipZombie', 'Random Bot'],
+    ['zombieBotExamples.py', 'MonteCarloZombie', 'Monte Carlo Bot', 40, 20],
+    ['zombieBotExamples.py', 'MinNumShotgunsThenStopsZombie', 'Min Shotguns Bot', 2],
+]
 ================================================================================
 
 
@@ -23,31 +39,15 @@ Note: Since all variables are public in Python, it is trivial to have a bot that
 Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
 """
 
-# Load a file with zombie bots
-exec(open('zombieBotExamples.py').read())
-
-# pass runTournament() a list of bot objects
-BOTS = [MonteCarloZombie('MonteCarlo', 40, 20),
-        MinNumShotgunsThenStopsZombie('Min2Shotguns', 2),
-        #MinNumShotgunsThenStopsZombie('Min2Shotguns2', 2),
-        RandomCoinFlipZombie('Random'),
-        #CrashZombie('Crash'),
-        SlowZombie('Slow'),
-        ]
-
-NUM_GAMES = 100 # the number of games to run in this tournament. Default value for the web gui version.
-
-
-
 VERBOSE = False # if True, program outputs the actions that happen during the game
 EXCEPTIONS_LOSE_GAME = True  # if True, errors in bot code won't stop the tournament code but instead result in the bot losing that game. Leave on False for debugging.
-MAX_TURN_TIME = 1 # number of seconds bot can take per turn. Violating this results in the bot losing the game.
+MAX_TURN_TIME = None # number of seconds bot can take per turn. Violating this results in the bot losing the game.
 
 # TODO - I wish there was a way to pre-emptively cut off the bot's turn() call
 # after MAX_TURN_TIME seconds have elapsed, but it seems like there's no
 # simple way to share GAME_STATE state between the threads/processes.
 
-import logging, random, sys, copy, platform, time, threading, webbrowser, os, re
+import logging, random, sys, copy, platform, time, threading, webbrowser, os, re, imp
 
 # Import correct web server module
 if platform.python_version().startswith('2.'):
@@ -90,7 +90,53 @@ START_TIME = None
 
 
 def main():
-    runTournament(BOTS, NUM_GAMES)
+    global BOTS, NUM_GAMES, VERBOSE, EXCEPTIONS_LOSE_GAME, MAX_TURN_TIME
+
+    if len(sys.argv) != 2:
+        print('Usage:')
+        print('  python %s config.py' % (sys.argv[0]))
+        print()
+        print('The config file is a Python script with the following variables set:')
+        print('  games - integer, the number of games to simulate')
+        print('  ui - string, either "web" for web interface or "cli" for command line interface')
+        print('  bots - a list of lists. Each inner list represents a bot, and has values:')
+        print('    filename - string, the python file where the bot code is')
+        print('    class name - string, the name of the class')
+        print('    bot name - string, the name of the bot instance')
+        print('    args - arguments passed to the bot\'s constructor')
+        print()
+        print('Additionally, the config file can have these variables:')
+        print('  verbose - boolean, if True, output game info to stdout')
+        print('  exceptions_lose_game - boolean, if True, an exception in the bot code causes the bot to forfeit the current game. If False, an exception crashes the tournament program.')
+        print('  max_turn_time - if None, there is no time limit for a bot\'s turn. Otherwise, the number of seconds the bot has per turn before forfeiting the current game.')
+        sys.exit(1)
+
+    # load the config file
+    config = imp.load_source('', sys.argv[1])
+
+    # Be sure to load each script only once
+    botScripts = set([botEntry[0] for botEntry in config.bots])
+    for botScript in botScripts:
+        exec(open(botScript).read())
+
+    BOTS = []
+    for botEntry in config.bots:
+        exec('BOTS.append(%s(%s))' % (botEntry[1], ', '.join([repr(v) for v in botEntry[2:]]))) # call each bot constructor & pass args
+
+    NUM_GAMES = config.games # the number of games to run in this tournament. (Or the default value for the web version.)
+
+    # load the optional settings if they are defined
+    if 'verbose' in dir(config):
+        VERBOSE = config.verbose
+    if 'exceptions_lose_game' in dir(config):
+        EXCEPTIONS_LOSE_GAME = config.exceptions_lose_game
+    if 'max_turn_time' in dir(config):
+        MAX_TURN_TIME = config.max_turn_time
+
+    if config.ui == 'web':
+        runWebGui()
+    else:
+        runTournament(BOTS, NUM_GAMES)
 
 
 def runWebGui():
@@ -463,10 +509,11 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
                 wins = TOURNAMENT_STATE['WINS'][zombieName]
                 ties = TOURNAMENT_STATE['TIES'][zombieName]
 
-                self.moreoutput("$('#%s_scorebar').css('width', '%spx'); " % (zombieName, scoreBarLength))
-                self.moreoutput("$('#%s_scorebar').css('background-color', '#%s'); " % (zombieName, scoreBarColor))
-                self.moreoutput("$('#%s_wins').text('%s'); " % (zombieName, wins))
-                self.moreoutput("$('#%s_ties').text('%s'); " % (zombieName, ties))
+                escapedZombieName = zombieName.replace(' ', '_') # JavaScript code can't handle zombie name with spaces. TODO - probably can't handle other characters too.
+                self.moreoutput("$('#%s_scorebar').css('width', '%spx'); " % (escapedZombieName, scoreBarLength))
+                self.moreoutput("$('#%s_scorebar').css('background-color', '#%s'); " % (escapedZombieName, scoreBarColor))
+                self.moreoutput("$('#%s_wins').text('%s'); " % (escapedZombieName, wins))
+                self.moreoutput("$('#%s_ties').text('%s'); " % (escapedZombieName, ties))
 
 
     def beginTournamentButtonPressed(self):
@@ -499,7 +546,8 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
         # create the table where each bot has a row for its score
         scoreTableHtml = []
         for zombieName in sorted([bot.name for bot in BOTS]):
-            scoreTableHtml.append('<tr><td>%s</td><td style="width: %spx;"><div id="%s_scorebar">&nbsp;</div></td><td><span id="%s_wins"></span></td><td><span id="%s_ties"></span></td></tr>' % (zombieName, SCORE_BAR_MAX_WIDTH, zombieName, zombieName, zombieName))
+            escapedZombieName = zombieName.replace(' ', '_') # JavaScript code can't handle zombie name with spaces. TODO - probably can't handle other characters too.
+            scoreTableHtml.append('<tr><td>%s</td><td style="width: %spx;"><div id="%s_scorebar">&nbsp;</div></td><td><span id="%s_wins"></span></td><td><span id="%s_ties"></span></td></tr>' % (zombieName, SCORE_BAR_MAX_WIDTH, escapedZombieName, escapedZombieName, escapedZombieName))
         scoreTableHtml = ''.join(scoreTableHtml)
 
         # output the main page's html (with the score table)
@@ -645,7 +693,4 @@ class BrowserOpener(threading.Thread):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and sys.argv[1] == 'web':
-        runWebGui()
-    else:
-        main()
+    main()
