@@ -39,6 +39,8 @@ Note: Since all variables are public in Python, it is trivial to have a bot that
 Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
 """
 
+__version__ = '0.1.0'
+
 VERBOSE = False # if True, program outputs the actions that happen during the game
 EXCEPTIONS_LOSE_GAME = True  # if True, errors in bot code won't stop the tournament code but instead result in the bot losing that game. Leave on False for debugging.
 MAX_TURN_TIME = None # number of seconds bot can take per turn. Violating this results in the bot losing the game.
@@ -693,4 +695,21 @@ class BrowserOpener(threading.Thread):
 
 
 if __name__ == '__main__':
-    main()
+    print('Usage:')
+    print('  To run a Zombie Dice tournament, call  ')
+    print('  python %s config.py' % (sys.argv[0]))
+    print()
+    print('The config file is a Python script with the following variables set:')
+    print('  games - integer, the number of games to simulate')
+    print('  ui - string, either "web" for web interface or "cli" for command line interface')
+    print('  bots - a list of lists. Each inner list represents a bot, and has values:')
+    print('    filename - string, the python file where the bot code is')
+    print('    class name - string, the name of the class')
+    print('    bot name - string, the name of the bot instance')
+    print('    args - arguments passed to the bot\'s constructor')
+    print()
+    print('Additionally, the config file can have these variables:')
+    print('  verbose - boolean, if True, output game info to stdout')
+    print('  exceptions_lose_game - boolean, if True, an exception in the bot code causes the bot to forfeit the current game. If False, an exception crashes the tournament program.')
+    print('  max_turn_time - if None, there is no time limit for a bot\'s turn. Otherwise, the number of seconds the bot has per turn before forfeiting the current game.')
+    sys.exit(1)
