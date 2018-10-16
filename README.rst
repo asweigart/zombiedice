@@ -18,9 +18,9 @@ First, you need to learn how to play Zombie Dice (this takes just a few minutes)
 * `Animated Flash demo of how to play <http://www.sjgames.com/dice/zombiedice/demo.html>`_
 * `Instructables article with the rules <https://www.instructables.com/id/How-to-play-Zombie-Dice/>`_
 
-Next, you need to create your own zombie. This is done by creating a class that implements a `turn()` method (called when it is your zombie's turn). The `turn()` method either calls the `zombiedice.roll()` function if you want to roll again, or returns to signal the end of their turn. The `turn()` method accepts one argument of the game state (documented later on this page). This class should also have a `'name'` attribute that contains a string of the player name. (This is so that the same class can be used for multiple players in a game.)
+Next, you need to create your own zombie. This is done by creating a class that implements a ``turn()`` method (called when it is your zombie's turn). The ``turn()`` method either calls the ``zombiedice.roll()`` function if you want to roll again, or returns to signal the end of their turn. The ``turn()`` method accepts one argument of the game state (documented later on this page). This class should also have a ``'name'`` attribute that contains a string of the player name. (This is so that the same class can be used for multiple players in a game.)
 
-The `zombiedice.roll()` function returns a list of dictionaries. The dictionaries represent the dice roll results; it has a `'color'` and `'icon'` keys, which have possible values of `'green'`, `'yellow'`, `'red'` and `'shotgun'`, `'brains'`, and `'footsteps'` respectively. The list will contain three of these dictionaries for the three dice roll results. If the player has reached three shotguns or more, this list will be empty.
+The ``zombiedice.roll()`` function returns a list of dictionaries. The dictionaries represent the dice roll results; it has a ``'color'`` and ``'icon'`` keys, which have possible values of ``'green'``, ``'yellow'``, ``'red'`` and ``'shotgun'``, ``'brains'``, and ``'footsteps'`` respectively. The list will contain three of these dictionaries for the three dice roll results. If the player has reached three shotguns or more, this list will be empty.
 
 Here's an example of a zombie that keeps rolling until they've reached two shotguns, then stops. More example zombies can be found in *examples.py* in the *zombiedice* package.
 
@@ -44,7 +44,7 @@ Here's an example of a zombie that keeps rolling until they've reached two shotg
                     if i[ICON] == SHOTGUN:
                         shotguns += 1
 
-To run a tournament, create a file that calls either `zombiedice.runWebGui()` (for the nice web GUI) or `zombiedice.runTournament()` (for the plain command line interface). A typical file will look like `demo.py` in the repo:
+To run a tournament, create a file that calls either ``zombiedice.runWebGui()`` (for the nice web GUI) or ``zombiedice.runTournament()`` (for the plain command line interface). A typical file will look like *demo.py* in the `repo <https://github.com/asweigart/zombiedice>`_:
 
 ..
     from zombiedice import runTournament, runWebGui
