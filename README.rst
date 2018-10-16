@@ -7,7 +7,7 @@ A full (but outdated) blog article explaining how these programs work (and the r
 
 This is useful for beginner/intermediate programming lessons or contests. The API for making bots is simple, and it features a web UI for projecting a nifty display of the tournament as it runs.
 
-![Screenshot of Web App Mode](screenshot.jpg)
+.. image:: screenshot.jpg
 
 Quickstart
 ----------
