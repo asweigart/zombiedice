@@ -1,4 +1,3 @@
-from zombiedice import runTournament, runWebGui
 import zombiedice
 
 zombies = (
@@ -9,6 +8,6 @@ zombies = (
 )
 
 # Uncomment one of the following lines to run in CLI or Web GUI mode:
-#runTournament(zombies=zombies, numGames=100, verbose=False)
-runWebGui(zombies=zombies, numGames=100, verbose=False)
+#zombiedice.runTournament(zombies=zombies, numGames=100, verbose=False)
+zombiedice.runWebGui(zombies=zombies, numGames=100, verbose=False)
 
