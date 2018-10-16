@@ -22,9 +22,9 @@ Next, you need to create your own zombie. This is done by creating a class that 
 
 The ``zombiedice.roll()`` function returns a list of dictionaries. The dictionaries represent the dice roll results; it has a ``'color'`` and ``'icon'`` keys, which have possible values of ``'green'``, ``'yellow'``, ``'red'`` and ``'shotgun'``, ``'brains'``, and ``'footsteps'`` respectively. The list will contain three of these dictionaries for the three dice roll results. If the player has reached three shotguns or more, this list will be empty.
 
-Here's an example of a zombie that keeps rolling until they've reached two shotguns, then stops. More example zombies can be found in *examples.py* in the *zombiedice* package.
+Here's an example of a zombie that keeps rolling until they've reached two shotguns, then stops. More example zombies can be found in *examples.py* in the *zombiedice* package::
 
-..
+
     class StopsAt2ShotgunsZombie(object):
         """This bot keeps rolling until it reaches 2 shotguns."""
         def __init__(self, name):
@@ -44,9 +44,8 @@ Here's an example of a zombie that keeps rolling until they've reached two shotg
                     if i[ICON] == SHOTGUN:
                         shotguns += 1
 
-To run a tournament, create a file that calls either ``zombiedice.runWebGui()`` (for the nice web GUI) or ``zombiedice.runTournament()`` (for the plain command line interface). A typical file will look like *demo.py* in the `repo <https://github.com/asweigart/zombiedice>`_:
+To run a tournament, create a file that calls either ``zombiedice.runWebGui()`` (for the nice web GUI) or ``zombiedice.runTournament()`` (for the plain command line interface). A typical file will look like *demo.py* in the `repo <https://github.com/asweigart/zombiedice>`_::
 
-..
     from zombiedice import runTournament, runWebGui
     import zombiedice
 
