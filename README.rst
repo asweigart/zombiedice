@@ -60,3 +60,20 @@ To run a tournament, create a file that calls either ``zombiedice.runWebGui()`` 
     #runTournament(zombies=zombies, numGames=100, verbose=False)
     runWebGui(zombies=zombies, numGames=100, verbose=False)
 
+Example Zombies
+---------------
+
+There are a few example zombies included with the module:
+
+* ``zombiedice.examples.RandomCoinFlipZombie(name)`` - Randomly decides 50/50 whether to continue rolling or quit.
+* ``zombiedice.examples.MinNumShotgunsThenStopsZombie(name, minShotguns)`` - Keeps rolling until it rolls the minimum number of shotguns specified.
+* ``zombiedice.examples.MinNumShotgunsThenStopsOneMoreZombie(name, minShotguns)`` - Like MinNumShotgunsThenStopsZombie, except it will roll one more time.
+* ``zombiedice.examples.HumanPlayerZombie(name)`` - Calls input() to let a human player play against the bots.
+* ``zombiedice.examples.RollsUntilInTheLeadZombie(name)`` - Keeps rolling until they are in first place.
+* ``zombiedice.examples.MonteCarloZombie(name, riskiness, numExperiments)`` - Does a number of monte carlo simulation (``numExperiments``) to determine what will happen if they roll again. As long as the percentage of simulations resulting in three shotguns is less than ``riskiness``, it will roll again.
+
+
+TODO
+----
+
+More details about how this module works to come.
