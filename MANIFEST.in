@@ -3,5 +3,5 @@ recursive-include docs *.bat
 recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs Makefile
-recursive-include zombiedice *.py
+recursive-include src *.py *.png *.jpg *.js
 recursive-include tests *.py

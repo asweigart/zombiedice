@@ -14,8 +14,6 @@ with open(os.path.join(here, 'README.rst')) as f:
     long_description = f.read()
 
 
-
-
 setup(
     name='zombiedice',
     version=version,
@@ -27,7 +25,7 @@ setup(
     license='BSD',
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
-    test_suite='tests',
+    package_data={'zombiedice': ['*.png', '*.jpg', '*.js']},
     install_requires=[],
     keywords="zombie dice game ai simulator bots",
     classifiers=[

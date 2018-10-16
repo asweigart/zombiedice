@@ -1,8 +1,12 @@
-# Zombie Dice simulator by Al Sweigart (al@inventwithpython.com)
-# Open BSD license
+from . import ICON, SHOTGUN, COLOR, BRAINS, roll, rollDie
+import copy
+import logging
+import platform
+import random
 
-# This file will be loaded by the tournament code into its own scope.
-# Consider the roll() function to exist in this global scope.
+if platform.python_version().startswith('2.'):
+    input = raw_input # python 2 code
+
 
 class RandomCoinFlipZombie(object):
     """After the first roll, this bot always has a fifty-fifty chance of deciding to roll again or stopping."""
@@ -76,18 +80,12 @@ class HumanPlayerZombie(object):
             print('Brains  : %s\t\tShotguns: %s' % (brains, shotguns))
             if len(shotguns) < 3:
                 print('Press Enter to roll again, or enter "S" to stop.')
-                if platform.python_version().startswith('2.'):
-                    response = raw_input() # python 2 code
-                else:
-                    response = input() # python 3 code
+                response = input()
                 if response.upper().startswith('S'):
                     return
             else:
                 print('Shotgunned! Press Enter to continue.')
-                if platform.python_version().startswith('2.'):
-                    raw_input() # python 2 code
-                else:
-                    input() # python 3 code
+                input()
                 return
 
 

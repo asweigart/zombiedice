@@ -49,9 +49,13 @@ MAX_TURN_TIME = None # number of seconds bot can take per turn. Violating this r
 # after MAX_TURN_TIME seconds have elapsed, but it seems like there's no
 # simple way to share GAME_STATE state between the threads/processes.
 
-import logging, random, sys, copy, platform, time, threading, webbrowser, os, re, imp
+import logging, random, sys, copy, platform, time, threading, webbrowser, os, re
+
 
 # Import correct web server module
+here = os.path.abspath(os.path.dirname(__file__))
+os.chdir(here)
+
 if platform.python_version().startswith('2.'):
     from SimpleHTTPServer import * # python 2 code
     from SocketServer import *
@@ -91,57 +95,12 @@ WEB_GUI_NUM_GAMES = None
 START_TIME = None
 
 
-def main():
-    global BOTS, NUM_GAMES, VERBOSE, EXCEPTIONS_LOSE_GAME, MAX_TURN_TIME
 
-    if len(sys.argv) != 2:
-        print('Usage:')
-        print('  python %s config.py' % (sys.argv[0]))
-        print()
-        print('The config file is a Python script with the following variables set:')
-        print('  games - integer, the number of games to simulate')
-        print('  ui - string, either "web" for web interface or "cli" for command line interface')
-        print('  bots - a list of lists. Each inner list represents a bot, and has values:')
-        print('    filename - string, the python file where the bot code is')
-        print('    class name - string, the name of the class')
-        print('    bot name - string, the name of the bot instance')
-        print('    args - arguments passed to the bot\'s constructor')
-        print()
-        print('Additionally, the config file can have these variables:')
-        print('  verbose - boolean, if True, output game info to stdout')
-        print('  exceptions_lose_game - boolean, if True, an exception in the bot code causes the bot to forfeit the current game. If False, an exception crashes the tournament program.')
-        print('  max_turn_time - if None, there is no time limit for a bot\'s turn. Otherwise, the number of seconds the bot has per turn before forfeiting the current game.')
-        sys.exit(1)
-
-    # load the config file
-    config = imp.load_source('', sys.argv[1])
-
-    # Be sure to load each script only once
-    botScripts = set([botEntry[0] for botEntry in config.bots])
-    for botScript in botScripts:
-        exec(open(botScript).read())
-
-    BOTS = []
-    for botEntry in config.bots:
-        exec('BOTS.append(%s(%s))' % (botEntry[1], ', '.join([repr(v) for v in botEntry[2:]]))) # call each bot constructor & pass args
-
-    NUM_GAMES = config.games # the number of games to run in this tournament. (Or the default value for the web version.)
-
-    # load the optional settings if they are defined
-    if 'verbose' in dir(config):
-        VERBOSE = config.verbose
-    if 'exceptions_lose_game' in dir(config):
-        EXCEPTIONS_LOSE_GAME = config.exceptions_lose_game
-    if 'max_turn_time' in dir(config):
-        MAX_TURN_TIME = config.max_turn_time
-
-    if config.ui == 'web':
-        runWebGui()
-    else:
-        runTournament(BOTS, NUM_GAMES)
-
-
-def runWebGui():
+def runWebGui(zombies, numGames, verbose=False):
+    global BOTS, NUM_GAMES, VERBOSE
+    BOTS = list(zombies)
+    NUM_GAMES = numGames
+    VERBOSE = verbose
     print('Zombie Dice Visualization is running. Open your browser to http://localhost:%s to view it.' % (WEB_SERVER_PORT))
     print('Press Ctrl-C to quit.')
     broswerOpenerThread = BrowserOpener()
@@ -279,10 +238,13 @@ def runGame(zombies):
     return GAME_STATE
 
 
-def runTournament(zombies, numGames):
+def runTournament(zombies, numGames, verbose=False):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
     zombies is a list of zombie bot objects. numGames is an int of how many games to run."""
-    global TOURNAMENT_STATE
+    global TOURNAMENT_STATE, VERBOSE
+    VERBOSE = verbose
+    zombies = list(zombies)
+
     TOURNAMENT_STATE = {'GAME_NUMBER': 0,
                         'WINS': dict([(zombie.name, 0) for zombie in zombies]),
                         'TIES': dict([(zombie.name, 0) for zombie in zombies])}
@@ -290,12 +252,13 @@ def runTournament(zombies, numGames):
     print('Tournament of %s games started...' % (numGames))
 
     for TOURNAMENT_STATE['GAME_NUMBER'] in range(numGames):
-        random.shuffle(zombies) # randomize the order
+        random.shuffle(zombies) # randomize the order of the bots
         endState = runGame(zombies) # use the same zombie objects so they can remember previous games.
 
         if endState is None:
             sys.exit('Error when running game.')
 
+        # Sort out the scores and find the winner.
         ranking = sorted(endState['SCORES'].items(), key=lambda x: x[1], reverse=True)
         highestScore = ranking[0][1]
         winners = [x[0] for x in ranking if x[1] == highestScore]
@@ -477,17 +440,17 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
             # display the "Begin Tournament" button.
             self.output("""
                 <center>
-                <form onsubmit="startTournament(); return false;" >
+                <div>
                   Run <input type="text" size="4" id="numGamesToRun" value="%s"> simulated games.<br />
-                  <input type="submit" value="Begin Tournament" />
-                </form>
+                  <input type="button" value="Begin Tournament" onclick="startTournament(); return false;" />
+                </div>
                 </center>
                 """ % (NUM_GAMES))
         else:
             # display the current status of the tournament simulation that is in progress
             self.output("""
                 <center style="font-size:1.5em;">
-                <span style="color: #00FF00">%s</span> / <span style="color: #FF0000">%s</span> Games Run</center>
+                <span style="color: #FF0000">%s</span> / <span style="color: #FF0000">%s</span> Games Run</center>
                 Estimate Time Remaining: <span style="color: #FF0000">%s</span>
                 """ % (TOURNAMENT_STATE['GAME_NUMBER'], WEB_GUI_NUM_GAMES, estTimeRemaining(START_TIME, TOURNAMENT_STATE['GAME_NUMBER'], WEB_GUI_NUM_GAMES)))
 
@@ -522,7 +485,7 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
         global WEB_GUI_NUM_GAMES, TOURNAMENT_RUNNING, START_TIME
 
         # path will be set to "/start/<NUM GAMES>"
-        mo = re.search('(\d+)', self.path)
+        mo = re.search(r'(\d+)', self.path)
         if mo is not None:
             WEB_GUI_NUM_GAMES = int(mo.group(1))
         else:
@@ -533,7 +496,7 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
         tournamentThread = TournamentThread()
         tournamentThread.start()
         TOURNAMENT_RUNNING = True # TOURNAMENT_RUNNING remains True after the tournament completes, until the "/" page is reloaded. Then it is set to False.
-
+        self.output('') # return blank http reply so the browser doesn't try the request again.
 
     def renderMainPage(self):
         global WEB_GUI_NUM_GAMES, TOURNAMENT_RUNNING, START_TIME
@@ -553,14 +516,14 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
         scoreTableHtml = ''.join(scoreTableHtml)
 
         # output the main page's html (with the score table)
-        self.output("""
+        self.output("""<!DOCTYPE html>
             <html>
             <head><title>Zombie Dice Simulator</title>
             <script src="jquery-1.8.3.min.js"></script></head>
             <body>
             <img src="imgZombieCheerleader.jpg" id="cheerleader" style="position: absolute; left: -90px; top: 10px; opacity: 0.0" />
             <img src="imgTitle.png" id="title" style="position: absolute; left: 100px; top: -10px; opacity: 0.0" />
-            <div style="position: absolute; left: 30px; top: 610px; font-size: 0.8em;"><center>By Al Sweigart <a href="http://inventwithpython.com">http://inventwithpython.com</a><br /><a href="http://www.amazon.com/gp/product/B003IKMR0U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B003IKMR0U&linkCode=as2&tag=playwithpyth-20">Buy Zombie Dice Online</a><br /><a href="http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice">Programming your own Zombie Dice bot.</a></center></div>
+            <div style="position: absolute; left: 30px; top: 610px; font-size: 0.8em;"><center>By Al Sweigart <a href="https://inventwithpython.com">https://inventwithpython.com</a><br /><a href="http://www.amazon.com/gp/product/B003IKMR0U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B003IKMR0U&linkCode=as2&tag=playwithpyth-20">Buy Zombie Dice Online</a><br /><a href="http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice">Programming your own Zombie Dice bot.</a></center></div>
             <!-- The mainstatusDiv shows the "Begin Tournament" button, and then the number of games played along with estimated time remaining. -->
             <div id="mainstatusDiv" style="position: absolute; left: 310px; top: 120px; width: 550px; background-color: #EEEEEE; opacity: 0.0"></div>
 
@@ -631,7 +594,7 @@ def getScoreBarColor(zombieName, winsState):
     myScore = winsState[zombieName]
 
     if maxScore == 0:
-        return '000000' # prevent zero division
+        return '000000' # return black color to prevent zero division error
 
     redness = int((myScore / float(maxScore)) * 255)
     redness = hex(redness)[2:].upper()
@@ -693,7 +656,7 @@ class BrowserOpener(threading.Thread):
 
 
 
-
+from . import examples
 if __name__ == '__main__':
     print('Usage:')
     print('  To run a Zombie Dice tournament, call  ')
