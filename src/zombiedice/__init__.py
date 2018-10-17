@@ -12,7 +12,7 @@ Note: Since all variables are public in Python, it is trivial to have a bot that
 Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
 """
 
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 
 EXCEPTIONS_LOSE_GAME = False # if True, errors in bot code won't stop the tournament code but instead result in the bot losing that game. Leave on False for debugging.
 MAX_TURN_TIME = None # number of seconds bot can take per turn. Violating this results in the bot losing the game.
