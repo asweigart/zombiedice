@@ -29,12 +29,12 @@ class MinNumShotgunsThenStopsZombie(object):
     def turn(self, gameState):
         shotguns = 0 # number of shotguns rolled this turn
         while shotguns < self.minShotguns:
-            results = roll()
-            if results == []:
+            diceRollResults = roll()
+
+            if diceRollResults is None:
                 return
-            for i in results:
-                if i[ICON] == SHOTGUN:
-                    shotguns += 1
+
+            shotguns += diceRollResults[SHOTGUN] # increase shotguns by the number of shotgun die rolls.
 
 
 class MinNumShotgunsThenStopsOneMoreZombie(object):
@@ -46,13 +46,13 @@ class MinNumShotgunsThenStopsOneMoreZombie(object):
     def turn(self, gameState):
         shotguns = 0 # number of shotguns rolled this turn
         while shotguns < self.minShotguns:
-            results = roll()
-            if results == []:
+            diceRollResults = roll()
+
+            if diceRollResults is None:
                 return
-            for i in results:
-                if i[ICON] == SHOTGUN:
-                    shotguns += 1
-        roll()
+
+            shotguns += diceRollResults[SHOTGUN] # increase shotguns by the number of shotgun die rolls.
+        roll() # Roll one more time.
 
 
 class HumanPlayerZombie(object):
@@ -61,21 +61,21 @@ class HumanPlayerZombie(object):
         self.name = name
 
     def turn(self, gameState):
-        brains = '' # number of brains rolled this turn
-        shotguns = '' # number of shotguns rolled this turn
+        brains = 0 # number of brains rolled this turn
+        shotguns = 0 # number of shotguns rolled this turn
         print('Scores:')
         for zombieName, zombieScore in gameState['SCORES'].items():
             print('\t%s - %s' % (zombieScore, zombieName))
         print()
 
         while True:
-            results = roll()
-            brains   += ''.join([x[COLOR][0].upper() for x in results if x[ICON] == BRAINS])
-            shotguns += ''.join([x[COLOR][0].upper() for x in results if x[ICON] == SHOTGUN])
+            diceRollResults = roll()
+            brains   += ''.join([x[COLOR][0].upper() for x in diceRollResults if x[ICON] == BRAINS])
+            shotguns += ''.join([x[COLOR][0].upper() for x in diceRollResults if x[ICON] == SHOTGUN])
 
             print('Roll:')
             for i in range(3):
-                print(results[i][COLOR], '\t', results[i][ICON])
+                print(diceRollResults['rolls'][i][COLOR], '\t', diceRollResults['rolls'][i][ICON])
             print()
             print('Brains  : %s\t\tShotguns: %s' % (brains, shotguns))
             if len(shotguns) < 3:
@@ -92,7 +92,7 @@ class HumanPlayerZombie(object):
 class RollsUntilInTheLeadZombie(object):
     """This bot's strategy is to keep rolling for brains until they are in the lead (plus an optional number of points). This is a high risk strategy, because if the opponent gets an early lead then this bot will take greater and greater risks to get in the lead in a single turn.
 
-    However, once in the lead, this bot will just use Zombie_MinNumShotgunsThenStops's strategy."""
+    However, once in the lead, this bot will just use MinNumShotgunsThenStopsZombie's strategy."""
     def __init__(self, name, plusLead=0):
         self.name = name
         self.plusLead = plusLead
@@ -103,13 +103,15 @@ class RollsUntilInTheLeadZombie(object):
         highestScoreThatIsntMine = max([zombieScore for zombieName, zombieScore in gameState['SCORES'].items() if zombieName != thisZombie])
 
         if highestScoreThatIsntMine + self.plusLead >= gameState['SCORES'][thisZombie]:
-            results = roll() # roll at least once
-            brains = len([True for result in results if result[ICON] == BRAINS])
+            diceRollResults = roll() # roll at least once
+            brains = diceRollResults[BRAINS]
             myScore = gameState['SCORES'][thisZombie]
 
-            while results != [] and myScore + brains <= highestScoreThatIsntMine + self.plusLead:
-                results = roll()
-                brains += len([True for result in results if result[ICON] == BRAINS])
+            while myScore + brains <= highestScoreThatIsntMine + self.plusLead:
+                diceRollResults = roll()
+                if diceRollResults is None:
+                    return
+                brains += diceRollResults[BRAINS]
         else:
             # already in the lead, so just use altZombieStrategy's turn()
             self.altZombieStrategy.turn(gameState)
@@ -124,8 +126,8 @@ class MonteCarloZombie(object):
         self.numExperiments = numExperiments
 
     def turn(self, gameState):
-        results = roll() # always do a first roll
-        shotguns = len([True for i in results if i[ICON] == SHOTGUN]) # count shotguns from first roll
+        diceRollResults = roll() # always do a first roll
+        shotguns = diceRollResults[SHOTGUN]
 
         if shotguns == 3:
             return # early exit if we rolled three shotguns on the first roll
@@ -139,8 +141,8 @@ class MonteCarloZombie(object):
 
             # roll if percentage of deaths < riskiness%
             if deaths / float(self.numExperiments) * 100 < self.riskiness:
-                results = roll() # this will update the CURRENT_CUP and ROLLED_BRAINS_DETAILS globals that simulatedRollShotguns() uses.
-                shotguns += len([True for i in results if i[ICON] == SHOTGUN])
+                diceRollResults = roll() # this will update the CURRENT_CUP and ROLLED_BRAINS_DETAILS globals that simulatedRollShotguns() uses.
+                shotguns += diceRollResults[SHOTGUN]
                 if shotguns >= 3:
                     return
             else:
@@ -149,7 +151,7 @@ class MonteCarloZombie(object):
     def simulatedRollShotguns(self, gameState):
         """Calculates the number of shotguns rolled with the current cup and rolled brains. (Rolled brains is only used in the rare case that we run out of dice.)"""
         shotguns = 0
-        cup = gameState['CURRENT_CUP']
+        cup = gameState['CURRENT_CUP'] # cup is just a list of 'red', 'green', 'yellow' strings for the types of dice in it
         rolledBrains = gameState['ROLLED_BRAINS_DETAILS']
 
         # "ran out of dice", so put the rolled brains back into the cup
@@ -158,7 +160,7 @@ class MonteCarloZombie(object):
             rolledBrains = []
 
         # add new dice to hand from cup until there are 3 dice in the hand
-        hand = []
+        hand = [] # hand is just a list of 'red', 'green', 'yellow' strings for the types of dice in it
         for i in range(3):
             newDie = random.choice(cup)
             logging.debug('%s die added to hand from cup.' % (newDie))
@@ -166,12 +168,12 @@ class MonteCarloZombie(object):
             hand.append(newDie)
 
         # roll the dice
-        results = []
+        dieRollResults = []
         for die in hand:
-            results.append(rollDie(die))
+            dieRollResults.append(rollDie(die))
 
         # count the shotguns and remove them from the hand
-        for result in results:
+        for result in dieRollResults:
             if result[ICON] == SHOTGUN:
                 shotguns += 1
                 hand.remove(result[COLOR])

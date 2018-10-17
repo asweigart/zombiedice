@@ -10,6 +10,6 @@ zombies = (
 )
 
 # Uncomment one of the following lines to run in CLI or Web GUI mode:
-#zombiedice.runTournament(zombies=zombies, numGames=100, verbose=False)
-zombiedice.runWebGui(zombies=zombies, numGames=100, verbose=False)
+#zombiedice.runTournament(zombies=zombies, numGames=100)
+zombiedice.runWebGui(zombies=zombies, numGames=1000)
 

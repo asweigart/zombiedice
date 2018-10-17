@@ -3,22 +3,23 @@ Zombie Dice Simulator
 
 A simulator for the dice game Zombie Dice that can run bot AI players.
 
-A full (but outdated) blog article explaining how these programs work (and the rules of Zombie Dice) can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice/
+Zombie Dice is a quick, fun dice game from Steve Jackson Games. The players are zombies trying to eat as many human brains without getting “shotgunned” by the humans. On their turn, a player will randomly select three dice from a cup of thirteen dice and roll them. The die faces are brains, footsteps, and shotguns. You get one point per brain, but if you roll a cumulative three shotguns, you’ve been shotgunned and get zero points for your turn. You can then decide to re-roll or pass your turn to the next player. If a die came up as “footsteps”, it’s used again if the player decides to re-roll. (The player always uses three dice for each roll.) Zombie Dice has a “push your luck” game mechanic: the more times you choose to re-roll the dice, the more brains you can get but the more likely you’ll collect three shotguns. The game continues until a player reaches 13 brains, and then the rest of the players get one more turn. The dice are colored green (brains are more likely), red (shotguns are more likely), and yellow (brains and shotguns are even).
 
-This is useful for beginner/intermediate programming lessons or contests. The API for making bots is simple, and it features a web UI for projecting a nifty display of the tournament as it runs.
+More complete rules for Zombie Dice can be found here:
+
+* `PDF of the rules in English <http://www.sjgames.com/dice/zombiedice/img/ZDRules_English.pdf>`_
+* `Animated Flash demo of how to play <http://www.sjgames.com/dice/zombiedice/demo.html>`_
+* `Instructables article with the rules <https://www.instructables.com/id/How-to-play-Zombie-Dice/>`_
+* `YouTube video of someone explaining the rules <https://www.youtube.com/watch?v=xodehimqCVs>`_
+
+This simulator is useful for beginner/intermediate programming lessons or contests. The API for making bots is simple, and it features a web UI for projecting a nifty display of the tournament as it runs.
 
 .. image:: screenshot.jpg
 
 Quickstart
 ----------
 
-First, you need to learn how to play Zombie Dice (this takes just a few minutes):
-
-* `PDF of the rules in English <http://www.sjgames.com/dice/zombiedice/img/ZDRules_English.pdf>`_
-* `Animated Flash demo of how to play <http://www.sjgames.com/dice/zombiedice/demo.html>`_
-* `Instructables article with the rules <https://www.instructables.com/id/How-to-play-Zombie-Dice/>`_
-
-Next, you need to create your own zombie. This is done by creating a class that implements a ``turn()`` method (called when it is your zombie's turn). The ``turn()`` method either calls the ``zombiedice.roll()`` function if you want to roll again, or returns to signal the end of their turn. The ``turn()`` method accepts one argument of the game state (documented later on this page). This class should also have a ``'name'`` attribute that contains a string of the player name. (This is so that the same class can be used for multiple players in a game.)
+First, you need to create your own zombie. This is done by creating a class that implements a ``turn()`` method (called when it is your zombie's turn). The ``turn()`` method either calls the ``zombiedice.roll()`` function if you want to roll again, or returns to signal the end of their turn. The ``turn()`` method accepts one argument of the game state (documented later on this page). This class should also have a ``'name'`` attribute that contains a string of the player name. (This is so that the same class can be used for multiple players in a game.)
 
 The ``zombiedice.roll()`` function returns a list of dictionaries. The dictionaries represent the dice roll results; it has a ``'color'`` and ``'icon'`` keys, which have possible values of ``'green'``, ``'yellow'``, ``'red'`` and ``'shotgun'``, ``'brains'``, and ``'footsteps'`` respectively. The list will contain three of these dictionaries for the three dice roll results. If the player has reached three shotguns or more, this list will be empty.
 
@@ -44,9 +45,8 @@ Here's an example of a zombie that keeps rolling until they've reached two shotg
                     if i[ICON] == SHOTGUN:
                         shotguns += 1
 
-To run a tournament, create a file that calls either ``zombiedice.runWebGui()`` (for the nice web GUI) or ``zombiedice.runTournament()`` (for the plain command line interface). A typical file will look like *demo.py* in the `repo <https://github.com/asweigart/zombiedice>`_::
+Next, you need to run a tournament. Create a file that calls either ``zombiedice.runWebGui()`` (for the nice web GUI) or ``zombiedice.runTournament()`` (for the plain command line interface). A typical file will look like *demo.py* in the `repo <https://github.com/asweigart/zombiedice>`_::
 
-    from zombiedice import runTournament, runWebGui
     import zombiedice
 
     zombies = (
@@ -57,8 +57,8 @@ To run a tournament, create a file that calls either ``zombiedice.runWebGui()`` 
     )
 
     # Uncomment one of the following lines to run in CLI or Web GUI mode:
-    #runTournament(zombies=zombies, numGames=100, verbose=False)
-    runWebGui(zombies=zombies, numGames=100, verbose=False)
+    #zombiedice.runTournament(zombies=zombies, numGames=1000)
+    zombiedice.runWebGui(zombies=zombies, numGames=1000)
 
 Example Zombies
 ---------------

@@ -5,33 +5,6 @@ http://zombiedice.sjgames.com/
 Zombie Dice simulator by Al Sweigart (al@inventwithpython.com)
 (I'm not affiliated with SJ Games. This is a hobby project.)
 
-==== TOURNAMENT SETUP INSTRUCTIONS =============================================
-To run the web gui for this simulator, run "python zombiedice.py config.py"
-
-The config file can have any name. It defines global variables:
-  games - integer, the number of games to simulate
-  ui - string, either "web" for web interface or "cli" for command line interface
-  bots - a list of lists. Each inner list represents a bot, and has values:
-    filename - string, the python file where the bot code is
-    class name - string, the name of the class
-    bot name - string, the name of the bot instance
-    args - arguments passed to the bot's constructor
-
-Additionally, the config file can have these variables:
-  verbose - boolean, if True, output game info to stdout
-  exceptions_lose_game - boolean, if True, an exception in the bot code causes the bot to forfeit the current game. If False, an exception crashes the tournament program.
-  max_turn_time - if None, there is no time limit for a bot's turn. Otherwise, the number of seconds the bot has per turn before forfeiting the current game.
-
-Example config.py file:
-games = 100
-ui = 'web'
-bots = [
-    ['zombieBotExamples.py', 'RandomCoinFlipZombie', 'Random Bot'],
-    ['zombieBotExamples.py', 'MonteCarloZombie', 'Monte Carlo Bot', 40, 20],
-    ['zombieBotExamples.py', 'MinNumShotgunsThenStopsZombie', 'Min Shotguns Bot', 2],
-]
-================================================================================
-
 
 Note: A "turn" is a single player's turn. A "round" is every player having one turn.
 Note: Since all variables are public in Python, it is trivial to have a bot that hacks the tournament code. Inspect the bot code before running it.
@@ -39,10 +12,9 @@ Note: Since all variables are public in Python, it is trivial to have a bot that
 Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
 """
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
-VERBOSE = False # if True, program outputs the actions that happen during the game
-EXCEPTIONS_LOSE_GAME = True  # if True, errors in bot code won't stop the tournament code but instead result in the bot losing that game. Leave on False for debugging.
+EXCEPTIONS_LOSE_GAME = False # if True, errors in bot code won't stop the tournament code but instead result in the bot losing that game. Leave on False for debugging.
 MAX_TURN_TIME = None # number of seconds bot can take per turn. Violating this results in the bot losing the game.
 
 # TODO - I wish there was a way to pre-emptively cut off the bot's turn() call
@@ -50,7 +22,7 @@ MAX_TURN_TIME = None # number of seconds bot can take per turn. Violating this r
 # simple way to share GAME_STATE state between the threads/processes.
 
 import logging, random, sys, copy, platform, time, threading, webbrowser, os, re
-
+from collections import namedtuple
 
 # Import correct web server module
 here = os.path.abspath(os.path.dirname(__file__))
@@ -62,18 +34,20 @@ if platform.python_version().startswith('2.'):
 else:
     from http.server import HTTPServer, SimpleHTTPRequestHandler # python 3 code
 
-logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.debug('Start of the Zombie Dice program.')
 
 # constants, to keep a typo in a string from making weird errors
-COLOR = 'color'
-ICON = 'icon'
+COLOR = 0
+ICON = 1
 RED = 'red'
 GREEN = 'green'
 YELLOW = 'yellow'
 SHOTGUN = 'shotgun'
 BRAINS = 'brains'
 FOOTSTEPS = 'footsteps'
+
+DieRoll = namedtuple('DieRoll', 'color icon')
 
 TOURNAMENT_STATE = None
 
@@ -96,11 +70,10 @@ START_TIME = None
 
 
 
-def runWebGui(zombies, numGames, verbose=False):
-    global BOTS, NUM_GAMES, VERBOSE
+def runWebGui(zombies, numGames):
+    global BOTS, NUM_GAMES
     BOTS = list(zombies)
     NUM_GAMES = numGames
-    VERBOSE = verbose
     print('Zombie Dice Visualization is running. Open your browser to http://localhost:%s to view it.' % (WEB_SERVER_PORT))
     print('Press Ctrl-C to quit.')
     broswerOpenerThread = BrowserOpener()
@@ -156,13 +129,12 @@ def runGame(zombies):
     while True: # game loop
         GAME_STATE['ROUND'] += 1
         logging.debug('ROUND #%s, scores: %s' % (GAME_STATE['ROUND'], GAME_STATE['SCORES']))
-        if VERBOSE: print('Round #%s' % (GAME_STATE['ROUND']))
+
         for zombie in zombiesInPlay:
             if zombie in crashedBots:
                 continue
             GAME_STATE['CURRENT_ZOMBIE'] = zombie.name
-            logging.debug('NEW TURN: %s' % (GAME_STATE['CURRENT_ZOMBIE']))
-            if VERBOSE: print("%s's turn." % (GAME_STATE['CURRENT_ZOMBIE']))
+            logging.debug("%s's turn." % (GAME_STATE['CURRENT_ZOMBIE']))
 
             # set up for a new turn
             GAME_STATE['CURRENT_CUP'] = [RED] * 3 + [YELLOW] * 4 + [GREEN] * 6
@@ -183,12 +155,13 @@ def runGame(zombies):
                     # if the bot code has an unhandled exception, it
                     # automatically loses this game
                     GAME_STATE['SCORES'][zombie.name] = -1
-                    if VERBOSE:
-                        print('%s has lost the game due to a raised exception.' % (GAME_STATE['CURRENT_ZOMBIE']))
+                    logging.warn('%s has lost the game due to a raised exception.' % (GAME_STATE['CURRENT_ZOMBIE']))
                 else:
                     raise # crash the tournament program (good for debugging)
-            if VERBOSE and GAME_STATE['SHOTGUNS_ROLLED'] < 3: print('%s stops.' % (GAME_STATE['CURRENT_ZOMBIE']))
-            if VERBOSE and GAME_STATE['SHOTGUNS_ROLLED'] >= 3: print('%s is shotgunned. Lose all brains.' % (GAME_STATE['CURRENT_ZOMBIE']))
+            if GAME_STATE['SHOTGUNS_ROLLED'] < 3:
+                logging.debug('%s stops.' % (GAME_STATE['CURRENT_ZOMBIE']))
+            else:
+                logging.debug('%s is shotgunned. Lose all brains.' % (GAME_STATE['CURRENT_ZOMBIE']))
 
             # add brains to the score
             if GAME_STATE['SHOTGUNS_ROLLED'] < 3:
@@ -197,8 +170,7 @@ def runGame(zombies):
             if GAME_STATE['SCORES'][zombie.name] >= 13:
                 # once a player reaches 13 brains, it becomes the last round
                 lastRound = True
-                logging.debug('LAST ROUND')
-                if VERBOSE: print('%s has reached 13 brains.' % (zombie.name))
+                logging.debug('Last round. (%s has reached 13 brains.)' % (zombie.name))
 
         if tieBreakingRound:
             break # there is only one tie-breaking round, so after it end the game
@@ -215,8 +187,7 @@ def runGame(zombies):
                 break
             else:
                 # multiple winners, so go on to the tie-breaking round.
-                logging.debug('TIE BREAKING ROUND')
-                if VERBOSE: print('Tie breaking round with %s' % (', '.join([zombie.name for zombie in zombiesInPlay])))
+                logging.debug('Tie breaking round with %s' % (', '.join([zombie.name for zombie in zombiesInPlay])))
                 tieBreakingRound = True
 
     # call every zombie's endGame() method, if it has one
@@ -227,22 +198,19 @@ def runGame(zombies):
     # rank bots by score
     ranking = sorted(GAME_STATE['SCORES'].items(), key=lambda x: x[1], reverse=True)
     highestScore = ranking[0][1]
-    logging.debug('Ranking: %s' % (ranking))
-    if VERBOSE: print('Final Scores: %s' % (', '.join(['%s %s' % (x[0], x[1]) for x in ranking])))     #(', '.join(['%s %s' % (name, score) for name, score in ranking.items()])))
+    logging.debug('Final Scores: %s' % (', '.join(['%s %s' % (x[0], x[1]) for x in ranking])))     #(', '.join(['%s %s' % (name, score) for name, score in ranking.items()])))
 
     # winners are the bot(s) with the highest score
     winners = [x[0] for x in ranking if x[1] == highestScore]
-    logging.debug('Winner(s): %s' % (winners))
-    if VERBOSE: print('Winner%s: %s' % ((len(winners) != 1 and 's' or ''), ', '.join(winners)))
+    logging.debug('Winner%s: %s' % ((len(winners) != 1 and 's' or ''), ', '.join(winners)))
 
     return GAME_STATE
 
 
-def runTournament(zombies, numGames, verbose=False):
+def runTournament(zombies, numGames):
     """A tournament is one or more games of Zombie Dice. The bots are re-used between games, so they can remember previous games.
     zombies is a list of zombie bot objects. numGames is an int of how many games to run."""
-    global TOURNAMENT_STATE, VERBOSE
-    VERBOSE = verbose
+    global TOURNAMENT_STATE
     zombies = list(zombies)
 
     TOURNAMENT_STATE = {'GAME_NUMBER': 0,
@@ -295,16 +263,14 @@ def roll():
         # if the bot code has taken too long, it
         # automatically loses this game
         #GAME_STATE['SCORES'][zombie.name] = -1
-        if VERBOSE:
-            print('%s has lost the game due to taking too long.' % (GAME_STATE['CURRENT_ZOMBIE']))
+        logging.warn('%s has lost the game due to taking too long.' % (GAME_STATE['CURRENT_ZOMBIE']))
         raise Exception('Exceeded max turn time.')
 
     # make sure zombie can actually roll
     if GAME_STATE['SHOTGUNS_ROLLED'] >= 3:
-        return []
+        return None
 
     logging.debug(GAME_STATE['CURRENT_ZOMBIE'] + ' rolls. (brains: %s, shotguns: %s)' % (GAME_STATE['BRAINS_ROLLED'], GAME_STATE['SHOTGUNS_ROLLED']))
-    if VERBOSE: print('%s rolls. (brains: %s, shotguns: %s)' % (GAME_STATE['CURRENT_ZOMBIE'], GAME_STATE['BRAINS_ROLLED'], GAME_STATE['SHOTGUNS_ROLLED']))
 
     # "ran out of dice", so put the rolled brains back into the cup
     if 3 - len(GAME_STATE['CURRENT_HAND']) > len(GAME_STATE['CURRENT_CUP']):
@@ -322,58 +288,58 @@ def roll():
     # roll the dice
     logging.debug('Hand is %s' % (', '.join(GAME_STATE['CURRENT_HAND'])))
     logging.debug('Cup has %s: %s' % (len(GAME_STATE['CURRENT_CUP']), ', '.join(GAME_STATE['CURRENT_CUP'])))
-    results = []
+    diceRollResults = {SHOTGUN: 0, FOOTSTEPS: 0, BRAINS: 0, 'rolls': []}
     for die in GAME_STATE['CURRENT_HAND']:
-        results.append(rollDie(die))
-    resultStr = ['%s_%s' % (result[COLOR][0].upper(), result[ICON][:2]) for result in results]
-    logging.debug('%s rolled %s' % (GAME_STATE['CURRENT_ZOMBIE'], ', '.join(resultStr)))
-    if VERBOSE: print(', '.join(['%s %s' % (result[COLOR].title(), result[ICON]) for result in results]))
+        dieRollResult = rollDie(die)
+        diceRollResults['rolls'].append(dieRollResult)
+        diceRollResults[dieRollResult[ICON]] += 1 # increase the shotgun/brain/footstep count
+
+    logging.debug('%s rolled %s' % (GAME_STATE['CURRENT_ZOMBIE'], diceRollResults))
 
     # count the shotguns and remove them from the hand
-    for result in results:
-        if result[ICON] == SHOTGUN:
+    for dieRollResult in diceRollResults['rolls']:
+        if dieRollResult[ICON] == SHOTGUN:
             GAME_STATE['SHOTGUNS_ROLLED'] += 1
-            logging.debug('Removing ' + result[COLOR] + ' from hand for shotgun.')
-            GAME_STATE['CURRENT_HAND'].remove(result[COLOR])
+            logging.debug('Removing ' + dieRollResult[COLOR] + ' from hand for shotgun.')
+            GAME_STATE['CURRENT_HAND'].remove(dieRollResult[COLOR])
 
     # count the brains and remove them from the hand
-    for result in results:
-        if result[ICON] == BRAINS:
-            GAME_STATE['ROLLED_BRAINS_DETAILS'].append(result[COLOR])
+    for dieRollResult in diceRollResults['rolls']:
+        if dieRollResult[ICON] == BRAINS:
+            GAME_STATE['ROLLED_BRAINS_DETAILS'].append(dieRollResult[COLOR])
             GAME_STATE['BRAINS_ROLLED'] += 1
-            logging.debug('Removing ' + result[COLOR] + ' from hand for brains.')
-            GAME_STATE['CURRENT_HAND'].remove(result[COLOR])
+            logging.debug('Removing ' + dieRollResult[COLOR] + ' from hand for brains.')
+            GAME_STATE['CURRENT_HAND'].remove(dieRollResult[COLOR])
 
-    return results
+    return diceRollResults
 
 
 def rollDie(die):
-    """Returns the result of a single die roll as a dictionary with keys 'color' and 'icon'.
-    The die parameter is a string of the color of the die (i.e. 'green', 'yellow', 'red').
-    The 'color' values in the return dict are one of 'green', 'yellow', 'red'.
-    The 'icon' values are one of 'shotgun', 'footsteps', 'brains'."""
+    """Returns the result of a single die roll as a DieRoll namedtuple.
+    Index 0 of the tuple is the color of the die (i.e. 'green', 'yellow', 'red').
+    Index 1 is the icon: 'shotgun', 'footsteps', 'brains'."""
     roll = random.randint(1, 6)
     if die == RED:
         if roll in (1, 2, 3):
-            return {COLOR: RED, ICON: SHOTGUN}
+            return DieRoll(RED, SHOTGUN)
         elif roll in (4, 5):
-            return {COLOR: RED, ICON: FOOTSTEPS}
+            return DieRoll(RED, FOOTSTEPS)
         elif roll in (6,):
-            return {COLOR: RED, ICON: BRAINS}
+            return DieRoll(RED, BRAINS)
     elif die == YELLOW:
         if roll in (1, 2):
-            return {COLOR: YELLOW, ICON: SHOTGUN}
+            return DieRoll(YELLOW, SHOTGUN)
         elif roll in (3, 4):
-            return {COLOR: YELLOW, ICON: FOOTSTEPS}
+            return DieRoll(YELLOW, FOOTSTEPS)
         elif roll in (5, 6):
-            return {COLOR: YELLOW, ICON: BRAINS}
+            return DieRoll(YELLOW, BRAINS)
     elif die == GREEN:
         if roll in (1,):
-            return {COLOR: GREEN, ICON: SHOTGUN}
+            return DieRoll(GREEN, SHOTGUN)
         elif roll in (2, 3):
-            return {COLOR: GREEN, ICON: FOOTSTEPS}
+            return DieRoll(GREEN, FOOTSTEPS)
         elif roll in (4, 5, 6):
-            return {COLOR: GREEN, ICON: BRAINS}
+            return DieRoll(GREEN, BRAINS)
 
 
 
@@ -523,7 +489,7 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
             <body>
             <img src="imgZombieCheerleader.jpg" id="cheerleader" style="position: absolute; left: -90px; top: 10px; opacity: 0.0" />
             <img src="imgTitle.png" id="title" style="position: absolute; left: 100px; top: -10px; opacity: 0.0" />
-            <div style="position: absolute; left: 30px; top: 610px; font-size: 0.8em;"><center>By Al Sweigart <a href="https://inventwithpython.com">https://inventwithpython.com</a><br /><a href="http://www.amazon.com/gp/product/B003IKMR0U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B003IKMR0U&linkCode=as2&tag=playwithpyth-20">Buy Zombie Dice Online</a><br /><a href="http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice">Programming your own Zombie Dice bot.</a></center></div>
+            <div style="position: absolute; left: 30px; top: 610px; font-size: 0.8em;"><center>By Al Sweigart <a href="https://inventwithpython.com">https://inventwithpython.com</a><br /><a href="http://www.amazon.com/gp/product/B003IKMR0U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B003IKMR0U&linkCode=as2&tag=playwithpyth-20">Buy Zombie Dice Online</a><br /><a href="https://github.com/asweigart/zombiedice">Program your own Zombie Dice bot.</a></center></div>
             <!-- The mainstatusDiv shows the "Begin Tournament" button, and then the number of games played along with estimated time remaining. -->
             <div id="mainstatusDiv" style="position: absolute; left: 310px; top: 120px; width: 550px; background-color: #EEEEEE; opacity: 0.0"></div>
 
@@ -655,24 +621,4 @@ class BrowserOpener(threading.Thread):
         webbrowser.open('http://localhost:%s' % (WEB_SERVER_PORT))
 
 
-
 from . import examples
-if __name__ == '__main__':
-    print('Usage:')
-    print('  To run a Zombie Dice tournament, call  ')
-    print('  python %s config.py' % (sys.argv[0]))
-    print()
-    print('The config file is a Python script with the following variables set:')
-    print('  games - integer, the number of games to simulate')
-    print('  ui - string, either "web" for web interface or "cli" for command line interface')
-    print('  bots - a list of lists. Each inner list represents a bot, and has values:')
-    print('    filename - string, the python file where the bot code is')
-    print('    class name - string, the name of the class')
-    print('    bot name - string, the name of the bot instance')
-    print('    args - arguments passed to the bot\'s constructor')
-    print()
-    print('Additionally, the config file can have these variables:')
-    print('  verbose - boolean, if True, output game info to stdout')
-    print('  exceptions_lose_game - boolean, if True, an exception in the bot code causes the bot to forfeit the current game. If False, an exception crashes the tournament program.')
-    print('  max_turn_time - if None, there is no time limit for a bot\'s turn. Otherwise, the number of seconds the bot has per turn before forfeiting the current game.')
-    sys.exit(1)
