@@ -488,13 +488,13 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
             <script src="jquery-1.8.3.min.js"></script></head>
             <body>
             <img src="imgZombieCheerleader.jpg" id="cheerleader" style="position: absolute; left: -90px; top: 10px; opacity: 0.0" />
-            <img src="imgTitle.png" id="title" style="position: absolute; left: 100px; top: -10px; opacity: 0.0" />
-            <div style="position: absolute; left: 30px; top: 610px; font-size: 0.8em;"><center>By Al Sweigart <a href="https://inventwithpython.com">https://inventwithpython.com</a><br /><a href="http://www.amazon.com/gp/product/B003IKMR0U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B003IKMR0U&linkCode=as2&tag=playwithpyth-20">Buy Zombie Dice Online</a><br /><a href="https://github.com/asweigart/zombiedice">Program your own Zombie Dice bot.</a></center></div>
+            <img src="imgTitle.png" id="title" style="position: absolute; left: 80px; top: -10px; opacity: 0.0" />
+            <div style="position: absolute; left: 10px; top: 310px; font-size: 0.8em;"><center>By Al Sweigart<br /><a href="https://inventwithpython.com">https://inventwithpython.com</a><br /><a href="http://www.amazon.com/gp/product/B003IKMR0U/ref=as_li_qf_sp_asin_il_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B003IKMR0U&linkCode=as2&tag=playwithpyth-20">Buy Zombie Dice Online</a><br /><a href="https://github.com/asweigart/zombiedice">Program your own Zombie Dice bot.</a></center></div>
             <!-- The mainstatusDiv shows the "Begin Tournament" button, and then the number of games played along with estimated time remaining. -->
-            <div id="mainstatusDiv" style="position: absolute; left: 310px; top: 120px; width: 550px; background-color: #EEEEEE; opacity: 0.0"></div>
+            <div id="mainstatusDiv" style="position: absolute; left: 210px; top: 80px; width: 550px; background-color: #EEEEEE; opacity: 0.0"></div>
 
             <!-- The scoreDiv shows how many wins and ties each bot has. -->
-            <div id="scoreDiv" style="position: absolute; left: 310px; top: 220px; width: 550px; background-color: #EEEEEE; opacity: 0.0">
+            <div id="scoreDiv" style="position: absolute; left: 210px; top: 150px; width: 550px; background-color: #EEEEEE; opacity: 0.0">
 
             <table border="0">
             <tr><td colspan="2"></td><td>Wins</td><td>Ties</td>
@@ -513,7 +513,7 @@ class ZombieDiceHandler(SimpleHTTPRequestHandler):
                 $('#scoreDiv').css('opacity', '1.0');
             }, 500);
             $('#cheerleader').animate({opacity: '+=1.0', left: '+=100'}, 600, null)
-            $('#title').animate({opacity: '+=1.0', top: '+=50'}, 1000, function() {
+            $('#title').animate({opacity: '+=1.0', top: '+=30'}, 1000, function() {
             })
 
 
@@ -622,3 +622,17 @@ class BrowserOpener(threading.Thread):
 
 
 from . import examples
+
+def demo():
+    zombies = (
+        examples.RandomCoinFlipZombie(name='Random'),
+        examples.MonteCarloZombie(name='Monte Carlo', riskiness=40, numExperiments=20),
+        examples.RollsUntilInTheLeadZombie(name='Until Leading'),
+        examples.MinNumShotgunsThenStopsZombie(name='Stop at 2 Shotguns', minShotguns=2),
+        examples.MinNumShotgunsThenStopsZombie(name='Stop at 1 Shotgun', minShotguns=1),
+        # Add any other zombie players here.
+    )
+
+    # Uncomment one of the following lines to run in CLI or Web GUI mode:
+    #zombiedice.runTournament(zombies=zombies, numGames=100)
+    runWebGui(zombies=zombies, numGames=1000)

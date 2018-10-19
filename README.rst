@@ -19,6 +19,12 @@ This simulator is useful for beginner/intermediate programming lessons or contes
 Quickstart
 ----------
 
+To install, run the usual ``pip install zombiedice`` (on Windows) or ``pip3 install zombiedice`` (on macOS/Linux).
+
+You can view a demo with some pre-made bots by running ``python -m zombiedice`` (on Windows) or ``pip3 install zombiedice`` (on macOS/Linux).
+
+Alternatively, you can run ``import zombiedice; zombiedice.demo()``
+
 First, you need to create your own zombie. This is done by creating a class that implements a ``turn()`` method (called when it is your zombie's turn). The ``turn()`` method either calls the ``zombiedice.roll()`` function if you want to roll again, or returns to signal the end of their turn. The ``turn()`` method accepts one argument of the game state (documented later on this page). This class should also have a ``'name'`` attribute that contains a string of the player name. (This is so that the same class can be used for multiple players in a game.)
 
 The ``zombiedice.roll()`` function returns a list of dictionaries. The dictionaries represent the dice roll results; it has a ``'color'`` and ``'icon'`` keys, which have possible values of ``'green'``, ``'yellow'``, ``'red'`` and ``'shotgun'``, ``'brains'``, and ``'footsteps'`` respectively. The list will contain three of these dictionaries for the three dice roll results. If the player has reached three shotguns or more, this list will be empty.
