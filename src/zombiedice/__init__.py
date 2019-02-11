@@ -12,7 +12,7 @@ Note: Since all variables are public in Python, it is trivial to have a bot that
 Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
 """
 
-__version__ = '0.1.4'
+__version__ = '0.1.5'
 
 EXCEPTIONS_LOSE_GAME = False # if True, errors in bot code won't stop the tournament code but instead result in the bot losing that game. Leave on False for debugging.
 MAX_TURN_TIME = None # number of seconds bot can take per turn. Violating this results in the bot losing the game.
@@ -69,9 +69,30 @@ WEB_GUI_NUM_GAMES = None
 START_TIME = None
 
 
+def assignUniqueZombieName(zombies):
+    # Assign names to zombies missing names:
+    for zombie in zombies:
+        if not hasattr(zombie, 'name') or zombie.name is None:
+            zombie.name = zombie.__class__.__name__
+        elif not isinstance(zombie.name, str):
+            zombie.name = str(zombie.name)
+
+    # Assign names to zombies with duplicate names:
+    for zombie in zombies:
+        otherZombiesNames = [z.name for z in zombies]
+        otherZombiesNames.remove(zombie.name)
+
+        # Check if a duplicate name exists:
+        if zombie.name in otherZombiesNames:
+            i = 2
+            while zombie.name + str(i) in otherZombiesNames:
+                i += 1
+            zombie.name = zombie.name + str(i)
+
 
 def runWebGui(zombies, numGames):
     global BOTS, NUM_GAMES
+    assignUniqueZombieName(zombies)
     BOTS = list(zombies)
     NUM_GAMES = numGames
     print('Zombie Dice Visualization is running. Open your browser to http://localhost:%s to view it.' % (WEB_SERVER_PORT))
@@ -93,6 +114,7 @@ def runWebGui(zombies, numGames):
 def runGame(zombies):
     """Runs a single game of zombie dice. zombies is a list of zombie dice bot objects."""
     global GAME_STATE
+    assignUniqueZombieName(zombies)
 
     # create a new game state object
     playerScores = dict([(zombie.name, 0) for zombie in zombies])
@@ -630,6 +652,7 @@ def demo():
         examples.RollsUntilInTheLeadZombie(name='Until Leading'),
         examples.MinNumShotgunsThenStopsZombie(name='Stop at 2 Shotguns', minShotguns=2),
         examples.MinNumShotgunsThenStopsZombie(name='Stop at 1 Shotgun', minShotguns=1),
+        examples.AlwaysRollsTwiceZombie(name='Roll Twice'),
         # Add any other zombie players here.
     )
 

@@ -199,3 +199,13 @@ class SlowZombie(object):
         import time
         time.sleep(2)
         roll() # just rolls once
+
+
+class AlwaysRollsTwiceZombie(object):
+    # This example zombie bot always rolls exactly twice on its turn.
+    def __init__(self, name):
+        self.name = name
+
+    def turn(self, gameState):
+        roll()
+        roll()
