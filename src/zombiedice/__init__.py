@@ -9,7 +9,7 @@ Zombie Dice simulator by Al Sweigart (al@inventwithpython.com)
 Note: A "turn" is a single player's turn. A "round" is every player having one turn.
 Note: Since all variables are public in Python, it is trivial to have a bot that hacks the tournament code. Inspect the bot code before running it.
 
-Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/how-to-make-ai-bots-for-zombie-dice
+Instructions for making your own bot can be found here: http://inventwithpython.com/blog/2012/11/21/programming-ai-bots-for-zombie-dice/
 """
 
 __version__ = '0.1.5'
