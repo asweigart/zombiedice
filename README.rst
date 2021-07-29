@@ -21,7 +21,7 @@ Quickstart
 
 To install, run the usual ``pip install zombiedice`` (on Windows) or ``pip3 install zombiedice`` (on macOS/Linux).
 
-You can view a demo with some pre-made bots by running ``python -m zombiedice`` (on Windows) or ``pip3 install zombiedice`` (on macOS/Linux).
+You can view a demo with some pre-made bots by running ``python -m zombiedice`` (on Windows) or ``python3 -m zombiedice`` (on macOS/Linux).
 
 Alternatively, you can run ``import zombiedice; zombiedice.demo()``
 
