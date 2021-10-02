@@ -66,6 +66,25 @@ Next, you need to run a tournament. Create a file that calls either ``zombiedice
     #zombiedice.runTournament(zombies=zombies, numGames=1000)
     zombiedice.runWebGui(zombies=zombies, numGames=1000)
 
+The ``gameState`` parameter for your zombie's ``turn()`` method is passed a dictionary of the state of the game. It's a dictionary with the following keys:
+
+The ``'SCORES'`` key's value is a dictionary of Zombie string names mapped to their integer scores.
+
+The ``'CURRENT_ZOMBIE'`` key's value is a string of the zombie whose turn it is currently.
+
+The ``'CURRENT_CUP'`` key's value is a list of dice strings (i.e. 'red', 'yellow', 'green') for how many of each dice are left in the cup.
+
+The ``'SHOTGUNS_ROLLED'`` key's value is an integer of how many shotguns have been rolled so far this turn.
+
+The ``'BRAINS_ROLLED'`` key's value is an integer of how many brains have been rolled so far this turn.
+
+The ``'ROLLED_BRAINS_DETAILS'`` key's value is a list of dice strings (i.e. 'red', 'yellow', 'green') for each brain rolled, used in the rare event we run out of brain dice.
+
+The ``'TURN_START_TIME'`` key's value is a float of the Unix epoch time since the current turn began.
+
+You can see examples of how ``gameState`` is used in the Zombie classes in the provided examples.py file.
+
+
 Example Zombies
 ---------------
 
