@@ -14,7 +14,7 @@ More complete rules for Zombie Dice can be found here:
 
 This simulator is useful for beginner/intermediate programming lessons or contests. The API for making bots is simple, and it features a web UI for projecting a nifty display of the tournament as it runs.
 
-.. image:: screenshot.jpg
+.. image:: screenshot.png
 
 Quickstart
 ----------
