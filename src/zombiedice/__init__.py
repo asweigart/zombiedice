@@ -90,20 +90,20 @@ def assignUniqueZombieName(zombies):
             zombie.name = zombie.name + str(i)
 
 
-def runWebGui(zombies, numGames):
+def runWebGui(zombies, numGames, host='localhost'):
     global BOTS, NUM_GAMES
     assignUniqueZombieName(zombies)
     BOTS = list(zombies)
     NUM_GAMES = numGames
-    print('Zombie Dice Visualization is running. Open your browser to http://localhost:%s to view it.' % (WEB_SERVER_PORT))
+    print('Zombie Dice Visualization is running. Open your browser to http://%s:%s to view it.' % (host, WEB_SERVER_PORT))
     print('Press Ctrl-C to quit.')
     broswerOpenerThread = BrowserOpener()
     broswerOpenerThread.start()
 
     if platform.python_version().startswith('2.'):
-        httpd = TCPServer(('localhost', WEB_SERVER_PORT), ZombieDiceHandler) # python 2 code
+        httpd = TCPServer((host, WEB_SERVER_PORT), ZombieDiceHandler) # python 2 code
     else:
-        httpd = HTTPServer(('localhost', WEB_SERVER_PORT), ZombieDiceHandler) # python 3 code
+        httpd = HTTPServer((host, WEB_SERVER_PORT), ZombieDiceHandler) # python 3 code
     try:
         httpd.serve_forever()
     except (KeyboardInterrupt, SystemExit):
@@ -640,12 +640,12 @@ class TournamentThread(threading.Thread):
 class BrowserOpener(threading.Thread):
     def run(self):
         time.sleep(0.4) # give the server a bit of time to start
-        webbrowser.open('http://localhost:%s' % (WEB_SERVER_PORT))
+        webbrowser.open('http://%s:%s' % (host, WEB_SERVER_PORT))
 
 
 from . import examples
 
-def demo():
+def demo(type = 'c', host = 'localhost'):
     zombies = (
         examples.RandomCoinFlipZombie(name='Random'),
         examples.MonteCarloZombie(name='Monte Carlo', riskiness=40, numExperiments=20),
@@ -657,5 +657,7 @@ def demo():
     )
 
     # Uncomment one of the following lines to run in CLI or Web GUI mode:
-    #zombiedice.runTournament(zombies=zombies, numGames=100)
-    runWebGui(zombies=zombies, numGames=1000)
+    if type == 'c':
+        runTournament(zombies=zombies, numGames=1000)
+    elif type == 'w':
+        runWebGui(zombies=zombies, numGames=1000, host=host)
