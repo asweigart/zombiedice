@@ -61,8 +61,8 @@ class HumanPlayerZombie(object):
         self.name = name
 
     def turn(self, gameState):
-        brains = 0 # number of brains rolled this turn
-        shotguns = 0 # number of shotguns rolled this turn
+        brains = '' # brains rolled this turn
+        shotguns = '' # shotguns rolled this turn
         print('Scores:')
         for zombieName, zombieScore in gameState['SCORES'].items():
             print('\t%s - %s' % (zombieScore, zombieName))
@@ -70,8 +70,8 @@ class HumanPlayerZombie(object):
 
         while True:
             diceRollResults = roll()
-            brains   += ''.join([x[COLOR][0].upper() for x in diceRollResults if x[ICON] == BRAINS])
-            shotguns += ''.join([x[COLOR][0].upper() for x in diceRollResults if x[ICON] == SHOTGUN])
+            brains   += ''.join([x[COLOR][0].upper() for x in diceRollResults['rolls'] if x[ICON] == BRAINS])
+            shotguns += ''.join([x[COLOR][0].upper() for x in diceRollResults['rolls'] if x[ICON] == SHOTGUN])
 
             print('Roll:')
             for i in range(3):
