@@ -31,25 +31,24 @@ The ``zombiedice.roll()`` function returns a list of dictionaries. The dictionar
 
 Here's an example of a zombie that keeps rolling until they've reached two shotguns, then stops. More example zombies can be found in *examples.py* in the *zombiedice* package::
 
+    from zombiedice import ICON, SHOTGUN, COLOR, BRAINS, roll, rollDie
 
-    class StopsAt2ShotgunsZombie(object):
-        """This bot keeps rolling until it reaches 2 shotguns."""
+    class MyZombie(object):
+        """This bot keeps rolling until it reaches 2 shotguns. Change this function to customize your strategy further."""
         def __init__(self, name):
             self.name = name
 
         def turn(self, gameState):
             shotgunsRolled = 0
             while shotgunsRolled < 2:
-                results = roll()
+                diceRollResults = roll()
 
-                if results == []:
+                if diceRollResults is None:
                     # Zombie has reached 3 or more shotguns.
                     return
+    
+                shotguns += diceRollResults[SHOTGUN]  # increase shotguns by the number of shotgun die rolls.
 
-                for i in results:
-                    # Count shotguns in results.
-                    if i[ICON] == SHOTGUN:
-                        shotguns += 1
 
 Next, you need to run a tournament. Create a file that calls either ``zombiedice.runWebGui()`` (for the nice web GUI) or ``zombiedice.runTournament()`` (for the plain command line interface). A typical file will look like *demo.py* in the `repo <https://github.com/asweigart/zombiedice>`_::
 
@@ -60,6 +59,7 @@ Next, you need to run a tournament. Create a file that calls either ``zombiedice
         zombiedice.examples.MonteCarloZombie(name='Monte Carlo', riskiness=40, numExperiments=20),
         zombiedice.examples.MinNumShotgunsThenStopsZombie(name='Min 2 Shotguns', minShotguns=2)
         # Add any other zombie players here.
+        MyZombie(name='My Zombie'),
     )
 
     # Uncomment one of the following lines to run in CLI or Web GUI mode:
@@ -98,7 +98,16 @@ There are a few example zombies included with the module:
 * ``zombiedice.examples.MonteCarloZombie(name, riskiness, numExperiments)`` - Does a number of monte carlo simulation (``numExperiments``) to determine what will happen if they roll again. As long as the percentage of simulations resulting in three shotguns is less than ``riskiness``, it will roll again.
 
 
-TODO
-----
+How Does Zombie Dice Simulator Work?
+------------------------------------
 
-More details about how this module works to come.
+The three major operating systems (Windows, macOS, and Linux) each have different ways to programmatically control the zombie dice simulation.
+
+* Main program runs, splits off the browser.
+* The zombie dice simulator works by running the zombie dice simulations in a different thread.
+* Uses multi-threading to open the browser in its own thread.
+* The web server is running in its own thread while the game simulations are running in a separate thread.
+* When you click ``runTournament``, this sends a command to the server and the server splits off another thread that is the tournament of 1000 games. 
+* Server is what reads results from tournament and displays in browser and updating constantly as games gets completed one by one. 
+* Three sepearate threads running: browser, server, and tournament. 
+
